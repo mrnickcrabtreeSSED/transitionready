@@ -1837,138 +1837,36 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
     <div class="card-title"><span class="icon teal">🎨</span> Choose Your Portfolio Template</div>
     <p style="font-size:.86rem;color:var(--slate);margin-bottom:20px;line-height:1.6;">Each template uses all the same information — just arranged differently. Pick the one that feels most like you.</p>
 
-    <div class="tpl-grid">
+    <div class="tpl-grid" style="grid-template-columns:repeat(3,1fr);">
 
-      <!-- Template 1: Classic -->
       <div class="tpl-card active" id="tpl-card-classic" onclick="selectTemplate('classic')">
-        <div class="tpl-preview">
-          <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
-            <defs>
-              <linearGradient id="g1a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f1f3d"/><stop offset="100%" stop-color="#1a3260"/></linearGradient>
-            </defs>
-            <rect width="200" height="260" fill="url(#g1a)"/>
-            <!-- mesh circles -->
-            <circle cx="170" cy="40" r="80" fill="rgba(42,143,168,.18)"/>
-            <circle cx="20" cy="220" r="60" fill="rgba(232,160,32,.12)"/>
-            <!-- top stripe -->
-            <rect x="0" y="0" width="200" height="4" fill="url(#g1a)"/>
-            <rect x="0" y="0" width="67" height="4" fill="#2a8fa8"/>
-            <rect x="67" y="0" width="66" height="4" fill="#e8a020"/>
-            <rect x="133" y="0" width="67" height="4" fill="#7c3aed"/>
-            <!-- photo circle placeholder -->
-            <circle cx="46" cy="96" r="22" fill="rgba(255,255,255,.12)"/>
-            <circle cx="46" cy="88" r="10" fill="rgba(255,255,255,.35)"/>
-            <ellipse cx="46" cy="106" rx="14" ry="9" fill="rgba(255,255,255,.35)"/>
-            <!-- name lines -->
-            <rect x="76" y="76" width="100" height="10" rx="2" fill="rgba(255,255,255,.8)"/>
-            <rect x="76" y="92" width="80" height="8" rx="2" fill="rgba(255,255,255,.55)"/>
-            <!-- amber line -->
-            <rect x="76" y="106" width="40" height="3" rx="1.5" fill="#e8a020"/>
-            <!-- career pills -->
-            <rect x="12" y="132" width="58" height="14" rx="7" fill="rgba(232,160,32,.25)" stroke="#e8a020" stroke-width="1"/>
-            <rect x="76" y="132" width="50" height="14" rx="7" fill="rgba(232,160,32,.25)" stroke="#e8a020" stroke-width="1"/>
-            <!-- footer bar -->
-            <rect x="0" y="220" width="200" height="40" fill="rgba(0,0,0,.25)"/>
-            <rect x="12" y="232" width="50" height="5" rx="2" fill="rgba(255,255,255,.3)"/>
-            <rect x="12" y="242" width="35" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
-            <rect x="72" y="232" width="50" height="5" rx="2" fill="rgba(255,255,255,.3)"/>
-            <rect x="72" y="242" width="35" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
-            <rect x="132" y="232" width="50" height="5" rx="2" fill="rgba(255,255,255,.3)"/>
-            <rect x="132" y="242" width="35" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
-          </svg>
-        </div>
-        <div class="tpl-info">
-          <div class="tpl-name">Classic</div>
-          <div class="tpl-desc">Photo left, name right, career pills, footer grid. Editorial and professional.</div>
-          <div class="tpl-check">✓ Selected</div>
-        </div>
+        <div class="tpl-preview"><canvas id="tpl-cv-classic" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Classic</div><div class="tpl-desc">Photo left · name right · footer info grid</div><div class="tpl-check">✓ Selected</div></div>
       </div>
 
-      <!-- Template 2: Modern -->
       <div class="tpl-card" id="tpl-card-modern" onclick="selectTemplate('modern')">
-        <div class="tpl-preview">
-          <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
-            <rect width="200" height="260" fill="#f8f9fb"/>
-            <!-- colored sidebar -->
-            <rect x="0" y="0" width="60" height="260" fill="#2a8fa8"/>
-            <!-- sidebar photo -->
-            <circle cx="30" cy="56" r="22" fill="rgba(255,255,255,.2)"/>
-            <circle cx="30" cy="48" r="10" fill="rgba(255,255,255,.5)"/>
-            <ellipse cx="30" cy="66" rx="14" ry="9" fill="rgba(255,255,255,.5)"/>
-            <!-- sidebar name vertical label -->
-            <rect x="22" y="96" width="16" height="80" rx="2" fill="rgba(255,255,255,.15)"/>
-            <!-- sidebar dots -->
-            <circle cx="30" cy="185" r="3" fill="rgba(255,255,255,.5)"/>
-            <circle cx="30" cy="196" r="3" fill="rgba(255,255,255,.3)"/>
-            <circle cx="30" cy="207" r="3" fill="rgba(255,255,255,.3)"/>
-            <!-- main content area -->
-            <rect x="72" y="30" width="110" height="12" rx="3" fill="#0f1f3d"/>
-            <rect x="72" y="48" width="90" height="8" rx="2" fill="#6b7a99"/>
-            <!-- teal accent line -->
-            <rect x="72" y="62" width="50" height="3" rx="1.5" fill="#2a8fa8"/>
-            <!-- divider -->
-            <rect x="72" y="80" width="110" height="1" fill="#dde3f0"/>
-            <!-- info rows -->
-            <rect x="72" y="90" width="40" height="6" rx="2" fill="#dde3f0"/>
-            <rect x="118" y="90" width="60" height="6" rx="2" fill="#b8c2d8"/>
-            <rect x="72" y="104" width="40" height="6" rx="2" fill="#dde3f0"/>
-            <rect x="118" y="104" width="50" height="6" rx="2" fill="#b8c2d8"/>
-            <rect x="72" y="118" width="40" height="6" rx="2" fill="#dde3f0"/>
-            <rect x="118" y="118" width="55" height="6" rx="2" fill="#b8c2d8"/>
-            <!-- section label -->
-            <rect x="72" y="138" width="50" height="5" rx="2" fill="#2a8fa8" opacity=".6"/>
-            <rect x="72" y="150" width="110" height="6" rx="2" fill="#1e2d4a" opacity=".6"/>
-            <rect x="72" y="162" width="95" height="6" rx="2" fill="#1e2d4a" opacity=".4"/>
-            <rect x="72" y="174" width="100" height="6" rx="2" fill="#1e2d4a" opacity=".3"/>
-            <!-- bottom bar -->
-            <rect x="60" y="236" width="140" height="24" fill="#0f1f3d"/>
-            <rect x="68" y="244" width="80" height="5" rx="2" fill="rgba(255,255,255,.35)"/>
-          </svg>
-        </div>
-        <div class="tpl-info">
-          <div class="tpl-name">Modern</div>
-          <div class="tpl-desc">Colored sidebar with photo, clean info grid on the right. Crisp and structured.</div>
-          <div class="tpl-check">✓ Selected</div>
-        </div>
+        <div class="tpl-preview"><canvas id="tpl-cv-modern" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Modern</div><div class="tpl-desc">Colored sidebar · white content panel</div><div class="tpl-check">✓ Selected</div></div>
       </div>
 
-      <!-- Template 3: Bold -->
       <div class="tpl-card" id="tpl-card-bold" onclick="selectTemplate('bold')">
-        <div class="tpl-preview">
-          <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
-            <defs>
-              <linearGradient id="g3a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0f1f3d"/><stop offset="100%" stop-color="#243d72"/></linearGradient>
-            </defs>
-            <rect width="200" height="260" fill="url(#g3a)"/>
-            <!-- big diagonal shape -->
-            <polygon points="0,0 140,0 200,80 200,0" fill="rgba(232,160,32,.18)"/>
-            <polygon points="0,200 0,260 80,260" fill="rgba(42,143,168,.12)"/>
-            <!-- amber accent bar left -->
-            <rect x="0" y="0" width="6" height="260" fill="#e8a020"/>
-            <!-- big name area -->
-            <rect x="22" y="40" width="155" height="22" rx="3" fill="rgba(255,255,255,.9)"/>
-            <rect x="22" y="68" width="130" height="16" rx="3" fill="rgba(255,255,255,.65)"/>
-            <!-- amber underline -->
-            <rect x="22" y="90" width="60" height="4" rx="2" fill="#e8a020"/>
-            <!-- quote block -->
-            <rect x="22" y="108" width="155" height="36" rx="6" fill="rgba(255,255,255,.07)" stroke="rgba(232,160,32,.3)" stroke-width="1"/>
-            <rect x="30" y="116" width="4" height="20" rx="2" fill="#e8a020" opacity=".6"/>
-            <rect x="40" y="117" width="120" height="5" rx="2" fill="rgba(255,255,255,.4)"/>
-            <rect x="40" y="127" width="100" height="5" rx="2" fill="rgba(255,255,255,.25)"/>
-            <rect x="40" y="137" width="80" height="5" rx="2" fill="rgba(255,255,255,.15)"/>
-            <!-- photo circle — centered bottom-ish -->
-            <circle cx="100" cy="195" r="30" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.2)" stroke-width="2"/>
-            <circle cx="100" cy="185" r="13" fill="rgba(255,255,255,.3)"/>
-            <ellipse cx="100" cy="207" rx="18" ry="12" fill="rgba(255,255,255,.3)"/>
-            <!-- class of badge -->
-            <rect x="70" y="236" width="60" height="14" rx="7" fill="rgba(232,160,32,.25)" stroke="#e8a020" stroke-width="1"/>
-          </svg>
-        </div>
-        <div class="tpl-info">
-          <div class="tpl-name">Bold</div>
-          <div class="tpl-desc">Large centered name, amber accent bar, quote block, photo centered. Striking and memorable.</div>
-          <div class="tpl-check">✓ Selected</div>
-        </div>
+        <div class="tpl-preview"><canvas id="tpl-cv-bold" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Bold</div><div class="tpl-desc">Full dark · oversized name · accent bar</div><div class="tpl-check">✓ Selected</div></div>
+      </div>
+
+      <div class="tpl-card" id="tpl-card-editorial" onclick="selectTemplate('editorial')">
+        <div class="tpl-preview"><canvas id="tpl-cv-editorial" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Editorial</div><div class="tpl-desc">Clean white · serif headline · top strip</div><div class="tpl-check">✓ Selected</div></div>
+      </div>
+
+      <div class="tpl-card" id="tpl-card-compact" onclick="selectTemplate('compact')">
+        <div class="tpl-preview"><canvas id="tpl-cv-compact" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Compact</div><div class="tpl-desc">Two-column · dense info · minimal style</div><div class="tpl-check">✓ Selected</div></div>
+      </div>
+
+      <div class="tpl-card" id="tpl-card-centered" onclick="selectTemplate('centered')">
+        <div class="tpl-preview"><canvas id="tpl-cv-centered" width="300" height="200" style="width:100%;height:100%;display:block;"></canvas></div>
+        <div class="tpl-info"><div class="tpl-name">Centered</div><div class="tpl-desc">Symmetric · large photo circle · centered</div><div class="tpl-check">✓ Selected</div></div>
       </div>
 
     </div><!-- end tpl-grid -->
@@ -2314,10 +2212,153 @@ var studentPhoto = null;
 var currentTheme = 'navy';
 var currentTemplate = 'classic';
 
+// ══════════════════════════════════════════════
+//  TEMPLATE PREVIEW CANVAS DRAWINGS
+// ══════════════════════════════════════════════
+var SCHEME_COLORS = {
+  navy:     {c1:'#0f1f3d', c2:'#e8a020', c3:'#2a8fa8'},
+  forest:   {c1:'#0d3321', c2:'#c8a215', c3:'#2e7d52'},
+  violet:   {c1:'#2d1458', c2:'#f97316', c3:'#6d28d9'},
+  slate:    {c1:'#1e2d4a', c2:'#e05c3a', c3:'#3d5a8a'},
+  midnight: {c1:'#0a1628', c2:'#00c896', c3:'#162d58'}
+};
+
+function tplRoundRect(ctx, x, y, w, h, r, stroke) {
+  ctx.beginPath(); ctx.roundRect(x,y,w,h,r);
+  if(stroke) ctx.stroke(); else ctx.fill();
+}
+
+function drawTplClassic(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle=c1; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle='rgba(255,255,255,.06)'; ctx.beginPath(); ctx.arc(255,35,100,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.04)'; ctx.beginPath(); ctx.arc(20,185,70,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.13)'; tplRoundRect(ctx,14,22,56,68,7);
+  ctx.fillStyle='rgba(255,255,255,.38)'; ctx.beginPath(); ctx.arc(42,44,11,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.38)'; ctx.beginPath(); ctx.ellipse(42,62,15,9,0,0,Math.PI); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillRect(80,28,130,12);
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(80,44,100,9);
+  ctx.fillStyle=c2; ctx.fillRect(80,57,50,3);
+  ctx.strokeStyle=c2; ctx.lineWidth=1;
+  tplRoundRect(ctx,14,108,72,16,8,true); ctx.fillStyle='rgba(255,255,255,.08)'; tplRoundRect(ctx,14,108,72,16,8);
+  tplRoundRect(ctx,92,108,64,16,8,true); ctx.fillStyle='rgba(255,255,255,.08)'; tplRoundRect(ctx,92,108,64,16,8);
+  tplRoundRect(ctx,162,108,58,16,8,true); ctx.fillStyle='rgba(255,255,255,.08)'; tplRoundRect(ctx,162,108,58,16,8);
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fillRect(0,162,300,38);
+  ctx.fillStyle='rgba(255,255,255,.3)'; ctx.fillRect(14,172,64,6); ctx.fillRect(14,182,46,4);
+  ctx.fillRect(100,172,64,6); ctx.fillRect(100,182,46,4);
+  ctx.fillRect(186,172,64,6); ctx.fillRect(186,182,46,4);
+}
+
+function drawTplModern(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle='#f8f9fb'; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle=c1; ctx.fillRect(0,0,78,200);
+  ctx.fillStyle='rgba(255,255,255,.1)'; ctx.beginPath(); ctx.arc(20,-25,85,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.07)'; ctx.beginPath(); ctx.arc(30,225,70,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(39,58,26,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(39,50,11,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(39,65,15,9,0,0,Math.PI); ctx.fill();
+  [96,110,124].forEach(function(y){ctx.fillStyle='rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(39,y,3,0,Math.PI*2); ctx.fill();});
+  ctx.fillStyle=c1; ctx.fillRect(92,24,175,14);
+  ctx.fillStyle='#6b7a99'; ctx.fillRect(92,42,140,9);
+  ctx.fillStyle=c2; ctx.fillRect(92,55,60,3);
+  ctx.fillStyle='#dde3f0'; ctx.fillRect(92,66,190,0.5);
+  [[92,76,48,7,'#ccd4e0'],[146,76,80,7,'#9ba8b8'],[92,89,48,7,'#ccd4e0'],[146,89,68,7,'#9ba8b8'],[92,102,48,7,'#ccd4e0'],[146,102,72,7,'#9ba8b8']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+  ctx.fillStyle=c1; ctx.fillRect(78,168,222,32);
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(92,178,110,6);
+}
+
+function drawTplBold(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle=c1; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle='rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(200,0); ctx.lineTo(300,100); ctx.lineTo(300,0); ctx.fill();
+  ctx.fillStyle=c2; ctx.fillRect(0,0,8,200);
+  ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillRect(22,30,210,20);
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(22,54,170,14);
+  ctx.fillStyle=c2; ctx.fillRect(22,72,65,4);
+  ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1; ctx.strokeRect(22,82,256,38);
+  ctx.fillStyle='rgba(255,255,255,.07)'; ctx.fillRect(22,82,256,38);
+  ctx.fillStyle=c2; ctx.fillRect(27,89,4,22);
+  ctx.fillStyle='rgba(255,255,255,.4)'; ctx.fillRect(36,91,190,7); ctx.fillRect(36,102,160,6); ctx.fillRect(36,113,130,5);
+  ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(50,170,24,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(50,170,23,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.45)'; ctx.beginPath(); ctx.arc(50,162,10,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.45)'; ctx.beginPath(); ctx.ellipse(50,177,14,8,0,0,Math.PI); ctx.fill();
+  var px=85; [68,48,56].forEach(function(w){ctx.strokeStyle=c2; ctx.lineWidth=1; tplRoundRect(ctx,px,161,w,15,7,true); ctx.fillStyle='rgba(255,255,255,.07)'; tplRoundRect(ctx,px,161,w,15,7); px+=w+10;});
+}
+
+function drawTplEditorial(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle=c1; ctx.fillRect(0,0,300,56);
+  ctx.fillStyle=c2; ctx.fillRect(0,0,300,6);
+  ctx.fillStyle='rgba(255,255,255,.18)'; tplRoundRect(ctx,14,14,42,36,4);
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(35,24,9,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(35,36,12,7,0,0,Math.PI); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillRect(64,18,140,11);
+  ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillRect(64,33,105,8);
+  ctx.fillStyle=c1; ctx.fillRect(14,70,210,18);
+  ctx.fillStyle=c2; ctx.fillRect(14,92,52,3);
+  ctx.fillStyle='#dde3f0'; ctx.fillRect(14,100,272,0.5);
+  [[14,110,175,7,'#4a5568'],[14,122,155,7,'#4a5568'],[14,134,130,7,'#4a5568']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+  ctx.fillStyle='#f8f9fb'; ctx.fillRect(0,152,300,48);
+  ctx.fillStyle='#dde3f0'; ctx.fillRect(0,152,300,0.5);
+  [[14,164,64,7,'#9ba8b8'],[86,164,85,7,'#4a5568'],[14,178,64,7,'#9ba8b8'],[86,178,72,7,'#4a5568']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+}
+
+function drawTplCompact(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle=c1; ctx.fillRect(0,0,300,9);
+  ctx.fillStyle='#f0f2f7'; ctx.fillRect(0,9,88,191);
+  ctx.fillStyle='#d0d8e8'; ctx.beginPath(); ctx.arc(44,44,20,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(44,37,10,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.ellipse(44,52,14,9,0,0,Math.PI); ctx.fill();
+  [[10,74,68,7,'#9ba8b8'],[10,86,58,6,'#9ba8b8'],[10,96,50,6,'#9ba8b8']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+  ctx.fillStyle=c2; ctx.fillRect(10,108,68,4);
+  [[10,118,68,6,'#9ba8b8'],[10,128,60,5,'#9ba8b8'],[10,138,55,5,'#9ba8b8'],[10,148,62,5,'#9ba8b8']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+  ctx.fillStyle=c1; ctx.fillRect(100,18,175,13);
+  ctx.fillStyle='#6b7a99'; ctx.fillRect(100,35,145,8);
+  ctx.fillStyle='#dde3f0'; ctx.fillRect(100,50,190,0.5);
+  [[100,60,185,7,'#4a5568'],[100,72,170,7,'#4a5568'],[100,84,145,7,'#4a5568']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+  ctx.fillStyle=c2; ctx.fillRect(100,96,72,4);
+  [[100,106,185,7,'#4a5568'],[100,118,160,7,'#4a5568'],[100,130,175,7,'#4a5568']].forEach(function(r){ctx.fillStyle=r[4]; ctx.fillRect(r[0],r[1],r[2],r[3]);});
+}
+
+function drawTplCentered(ctx, col) {
+  var c1=col.c1, c2=col.c2;
+  ctx.fillStyle=c1; ctx.fillRect(0,0,300,200);
+  ctx.fillStyle='rgba(255,255,255,.04)'; ctx.beginPath(); ctx.arc(150,100,160,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.03)'; ctx.beginPath(); ctx.arc(150,100,100,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.28)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(150,52,32,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.14)'; ctx.beginPath(); ctx.arc(150,52,31,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(150,43,13,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.ellipse(150,62,18,11,0,0,Math.PI); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.88)'; ctx.fillRect(60,96,180,14);
+  ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(75,114,150,9);
+  ctx.fillStyle=c2; ctx.fillRect(115,127,70,3);
+  ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(30,136); ctx.lineTo(270,136); ctx.stroke();
+  var tx=60; [80,62,72].forEach(function(w){ctx.strokeStyle=c2; ctx.lineWidth=1; tplRoundRect(ctx,tx,142,w,15,7,true); ctx.fillStyle='rgba(255,255,255,.08)'; tplRoundRect(ctx,tx,142,w,15,7); tx+=w+10;});
+  ctx.fillStyle='rgba(255,255,255,.25)'; ctx.fillRect(60,168,180,6); ctx.fillRect(80,180,140,5);
+}
+
+var TPL_DRAW_FNS = {classic:drawTplClassic, modern:drawTplModern, bold:drawTplBold, editorial:drawTplEditorial, compact:drawTplCompact, centered:drawTplCentered};
+
+function renderTemplatePreviews() {
+  var col = SCHEME_COLORS[currentTheme] || SCHEME_COLORS.navy;
+  ['classic','modern','bold','editorial','compact','centered'].forEach(function(id) {
+    var cv = document.getElementById('tpl-cv-'+id);
+    if(!cv) return;
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,300,200);
+    TPL_DRAW_FNS[id](ctx, col);
+  });
+}
+
 // ── TEMPLATE SELECTION ──
 function selectTemplate(name) {
   currentTemplate = name;
-  ['classic','modern','bold'].forEach(function(t) {
+  ['classic','modern','bold','editorial','compact','centered'].forEach(function(t) {
     var card = document.getElementById('tpl-card-'+t);
     if(card) card.classList.toggle('active', t === name);
   });
@@ -2332,9 +2373,9 @@ function selectScheme(name) {
   });
   document.body.className = document.body.className.replace(/\btheme-\S+/g,'').trim();
   if(name !== 'navy') document.body.classList.add('theme-'+name);
+  renderTemplatePreviews();
 }
 
-// Legacy setTheme alias
 function setTheme(theme) { selectScheme(theme); }
 
 
@@ -2824,6 +2865,7 @@ function nextStep(from) {
   goToStep(from+1);
   if(from+1 === 7) {
     setTimeout(updateIncludeStatuses, 100);
+    setTimeout(renderTemplatePreviews, 150);
   }
 }
 function prevStep(from) { goToStep(from-1); }
@@ -3000,9 +3042,7 @@ async function generateDoc(docId) {
   async function callOpus(prompt, maxTokens) {
     var res = await fetch('/api/claude', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
         max_tokens: maxTokens || 1500,
@@ -3019,7 +3059,7 @@ async function generateDoc(docId) {
 
   try {
     var html = '';
-    var usingOpus = true;
+    var usingOpus = !!getApiKey();
 
     // ── RESUME ───────────────────────────────────────────
     if(docId === 'resume') {
@@ -3605,37 +3645,106 @@ function buildPortfolio() {
       +'</div>'
       +'</div>';
 
-  } else {
+  } else if(currentTemplate === 'bold') {
     // ── BOLD: Full-bleed dark, large name, amber accent bar, centered photo ──
     html += '<div class="pf3-cover">'
       +'<div class="pf3-cover-bg-mesh"></div>'
       +'<div style="position:absolute;top:0;left:0;bottom:0;width:8px;background:var(--theme-accent);z-index:3;"></div>'
-      +'<div style="position:absolute;top:0;left:0;right:0;height:280px;background:linear-gradient(135deg,rgba(232,160,32,.12) 0%,transparent 60%);z-index:1;"></div>'
-      +'<div class="pf3-cover-inner" style="z-index:2;">'
-      +'<div class="pf3-cover-top" style="margin-left:16px;">'+logo+'<div class="pf3-cover-badge">Transition Portfolio</div></div>'
-      +'<div style="margin-left:16px;margin-top:48px;">'
+      +'<div class="pf3-cover-inner" style="z-index:2;margin-left:16px;">'
+      +'<div class="pf3-cover-top">'+logo+'<div class="pf3-cover-badge">Transition Portfolio</div></div>'
+      +'<div style="margin-top:48px;">'
       +'<div style="font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--theme-accent);margin-bottom:14px;">Class of '+esc(d.gradYear||'2026')+'</div>'
       +'<div style="font-family:\'Playfair Display\',serif;font-size:5rem;font-weight:700;color:#fff;line-height:.9;margin-bottom:22px;letter-spacing:-.03em;">'+esc(d.firstName)+'<br>'+esc(d.lastName)+'</div>'
-      +(d.voice?'<div style="border:1px solid rgba(232,160,32,.35);border-radius:10px;padding:16px 18px;margin-bottom:28px;max-width:500px;background:rgba(232,160,32,.06);">'
+      +(d.voice?'<div style="border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:16px 18px;margin-bottom:28px;max-width:500px;background:rgba(255,255,255,.06);">'
         +'<div style="font-family:\'Playfair Display\',serif;font-size:1rem;font-style:italic;color:rgba(255,255,255,.7);line-height:1.65;">"'+esc(d.voice)+'"</div>'
-        +'</div>':'' )
+        +'</div>':'')
       +'<div style="display:flex;flex-wrap:wrap;gap:10px;">'
-      +careers.map(function(cr){
-        return '<span style="background:rgba(232,160,32,.18);border:1.5px solid var(--theme-accent);color:var(--theme-accent-light);font-size:.82rem;font-weight:600;padding:7px 16px;border-radius:24px;">'+esc(cr.title)+'</span>';
-      }).join('')
+      +careers.map(function(cr){return '<span style="background:rgba(255,255,255,.12);border:1.5px solid var(--theme-accent);color:var(--theme-accent-light);font-size:.82rem;font-weight:600;padding:7px 16px;border-radius:24px;">'+esc(cr.title)+'</span>';}).join('')
       +'</div>'
       +'</div>'
-      +'<div style="margin-top:auto;display:flex;align-items:flex-end;gap:24px;margin-left:16px;">'
-      +(d.photo
-        ? '<div style="width:100px;height:120px;border-radius:12px;overflow:hidden;border:3px solid rgba(255,255,255,.3);">'+
-          '<img src="'+d.photo+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>'
-        : '')
+      +'<div style="margin-top:auto;display:flex;align-items:flex-end;gap:24px;">'
+      +(d.photo?'<div style="width:100px;height:120px;border-radius:12px;overflow:hidden;border:3px solid rgba(255,255,255,.3);"><img src="'+d.photo+'" style="width:100%;height:100%;object-fit:cover;display:block;"></div>':'')
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;padding-bottom:4px;">'
       +(d.school?'<div><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">School</div><div style="font-size:.82rem;color:rgba(255,255,255,.75);">'+esc(d.school)+'</div></div>':'')
       +(d.region?'<div><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">Location</div><div style="font-size:.82rem;color:rgba(255,255,255,.75);">'+esc(d.region)+'</div></div>':'')
       +(d.cm?'<div><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">Case Manager</div><div style="font-size:.82rem;color:rgba(255,255,255,.75);">'+esc(d.cm)+'</div></div>':'')
       +'<div><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">Prepared</div><div style="font-size:.82rem;color:rgba(255,255,255,.75);">'+today+'</div></div>'
       +'</div></div>'
+      +'</div></div>';
+
+  } else if(currentTemplate === 'editorial') {
+    // ── EDITORIAL: White bg, top dark strip with photo, serif headline, info grid bottom ──
+    html += '<div class="pf3-cover" style="background:#fff;min-height:100vh;display:flex;flex-direction:column;">'
+      +'<div style="background:var(--theme-primary);padding:28px 52px;display:flex;align-items:center;gap:24px;">'
+      +logo
+      +(d.photo?'<div style="width:52px;height:62px;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,.3);flex-shrink:0;"><img src="'+d.photo+'" style="width:100%;height:100%;object-fit:cover;"></div>':'')
+      +'<div>'
+      +'<div style="font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--theme-accent);margin-bottom:5px;">Transition Portfolio · Class of '+esc(d.gradYear||'2026')+'</div>'
+      +'<div style="font-family:\'Playfair Display\',serif;font-size:1.3rem;font-weight:700;color:#fff;">'+esc(nameStr)+'</div>'
+      +'</div>'
+      +'<div class="pf3-cover-badge" style="margin-left:auto;">'+esc(d.school||'Sure Step Education')+'</div>'
+      +'</div>'
+      +'<div style="padding:52px;flex:1;">'
+      +'<div style="font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--theme-accent);margin-bottom:14px;">Career Goal</div>'
+      +'<div style="font-family:\'Playfair Display\',serif;font-size:4rem;font-weight:700;color:var(--theme-primary);line-height:.95;margin-bottom:20px;letter-spacing:-.03em;">'+esc(d.firstName)+'<br>'+esc(d.lastName)+'</div>'
+      +'<div style="width:64px;height:4px;background:var(--theme-accent);border-radius:2px;margin-bottom:24px;"></div>'
+      +(d.voice?'<p style="font-family:\'Playfair Display\',serif;font-size:1.05rem;font-style:italic;color:#4a5568;line-height:1.75;max-width:500px;margin-bottom:28px;">"'+esc(d.voice)+'"</p>':'')
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px;">'
+      +careers.map(function(cr){return '<span style="background:var(--theme-accent-pale);color:var(--theme-primary);border:1.5px solid var(--theme-accent);font-size:.84rem;font-weight:600;padding:7px 16px;border-radius:20px;">'+esc(cr.title)+'</span>';}).join('')
+      +'</div>'
+      +'</div>'
+      +'<div style="background:#f8f9fb;border-top:1px solid #dde3f0;padding:22px 52px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">'
+      +(d.school?'<div><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ba8b8;margin-bottom:3px;">School</div><div style="font-size:.85rem;font-weight:600;color:var(--theme-primary);">'+esc(d.school)+'</div></div>':'')
+      +(d.region?'<div><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ba8b8;margin-bottom:3px;">Location</div><div style="font-size:.85rem;font-weight:600;color:var(--theme-primary);">'+esc(d.region)+'</div></div>':'')
+      +(d.phone?'<div><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ba8b8;margin-bottom:3px;">Phone</div><div style="font-size:.85rem;font-weight:600;color:var(--theme-primary);">'+esc(d.phone)+'</div></div>':'')
+      +(d.email?'<div><div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ba8b8;margin-bottom:3px;">Email</div><div style="font-size:.85rem;font-weight:600;color:var(--theme-primary);">'+esc(d.email)+'</div></div>':'')
+      +'</div>'
+      +'</div>';
+
+  } else if(currentTemplate === 'compact') {
+    // ── COMPACT: Narrow left col with photo+contact, wide right col with content ──
+    html += '<div class="pf3-cover" style="background:#fff;flex-direction:row;min-height:100vh;">'
+      +'<div style="width:200px;flex-shrink:0;background:#f0f2f7;border-right:1px solid #dde3f0;display:flex;flex-direction:column;padding:36px 22px;">'
+      +'<div style="margin-bottom:20px;">'+logo+'</div>'
+      +(d.photo?'<div style="width:80px;height:96px;border-radius:10px;overflow:hidden;border:2px solid #dde3f0;margin-bottom:16px;"><img src="'+d.photo+'" style="width:100%;height:100%;object-fit:cover;"></div>':'<div style="width:64px;height:64px;border-radius:50%;background:#dde3f0;margin-bottom:16px;display:flex;align-items:center;justify-content:center;"><svg width="30" height="36" viewBox="0 0 40 48" fill="none"><circle cx="20" cy="14" r="10" fill="#b8c2d8"/><path d="M2 44c0-9.94 8.06-18 18-18s18 8.06 18 18" fill="#b8c2d8"/></svg></div>')
+      +'<div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--theme-accent);margin-bottom:10px;">Contact</div>'
+      +(d.phone?'<div style="font-size:.74rem;color:#4a5568;margin-bottom:5px;">'+esc(d.phone)+'</div>':'')
+      +(d.email?'<div style="font-size:.72rem;color:#4a5568;margin-bottom:5px;word-break:break-all;">'+esc(d.email)+'</div>':'')
+      +(d.region?'<div style="font-size:.74rem;color:#4a5568;margin-bottom:16px;">'+esc(d.region)+'</div>':'')
+      +'<div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--theme-accent);margin-bottom:10px;">Career Goals</div>'
+      +careers.map(function(cr){return '<div style="font-size:.75rem;color:#4a5568;margin-bottom:6px;padding-left:8px;border-left:2px solid var(--theme-accent);">'+esc(cr.title)+'</div>';}).join('')
+      +'<div style="margin-top:auto;font-size:.62rem;color:#b8c2d8;">'+today+'</div>'
+      +'</div>'
+      +'<div style="flex:1;padding:52px 48px;display:flex;flex-direction:column;">'
+      +'<div style="font-size:.65rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--theme-accent);margin-bottom:12px;">Transition Portfolio · Class of '+esc(d.gradYear||'2026')+'</div>'
+      +'<div style="font-family:\'Playfair Display\',serif;font-size:3.6rem;font-weight:700;color:var(--theme-primary);line-height:.95;margin-bottom:18px;letter-spacing:-.02em;">'+esc(d.firstName)+'<br>'+esc(d.lastName)+'</div>'
+      +'<div style="width:52px;height:3px;background:var(--theme-accent);border-radius:2px;margin-bottom:20px;"></div>'
+      +(d.voice?'<p style="font-family:\'Playfair Display\',serif;font-size:.96rem;font-style:italic;color:#4a5568;line-height:1.75;border-left:3px solid var(--theme-accent);padding-left:14px;margin-bottom:auto;max-width:440px;">"'+esc(d.voice)+'"</p>':'<div style="flex:1;"></div>')
+      +(d.school?'<div style="padding-top:20px;border-top:1px solid #eef0f8;font-size:.84rem;color:#6b7a99;">'+esc(d.school)+'</div>':'')
+      +'</div>'
+      +'</div>';
+
+  } else {
+    // ── CENTERED: Symmetric, photo circle center, centered text ──
+    html += '<div class="pf3-cover">'
+      +'<div class="pf3-cover-bg-mesh"></div>'
+      +'<div class="pf3-cover-inner" style="align-items:center;text-align:center;">'
+      +'<div style="margin-bottom:24px;">'+logo+'</div>'
+      +(d.photo
+        ?'<div style="width:110px;height:110px;border-radius:50%;overflow:hidden;border:3px solid rgba(255,255,255,.35);margin-bottom:22px;box-shadow:0 8px 30px rgba(0,0,0,.25);"><img src="'+d.photo+'" style="width:100%;height:100%;object-fit:cover;"></div>'
+        :'<div style="width:100px;height:100px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);margin-bottom:22px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);"><svg width="44" height="52" viewBox="0 0 40 48" fill="none"><circle cx="20" cy="14" r="10" fill="rgba(255,255,255,0.5)"/><path d="M2 44c0-9.94 8.06-18 18-18s18 8.06 18 18" fill="rgba(255,255,255,0.5)"/></svg></div>')
+      +'<div style="font-size:.68rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--theme-accent);margin-bottom:12px;">Class of '+esc(d.gradYear||'2026')+'</div>'
+      +'<div style="font-family:\'Playfair Display\',serif;font-size:3.8rem;font-weight:700;color:#fff;line-height:.95;margin-bottom:18px;letter-spacing:-.03em;">'+esc(d.firstName)+'<br>'+esc(d.lastName)+'</div>'
+      +'<div style="width:60px;height:4px;background:var(--theme-accent);border-radius:2px;margin:0 auto 22px;"></div>'
+      +(d.voice?'<p style="font-family:\'Playfair Display\',serif;font-size:.96rem;font-style:italic;color:rgba(255,255,255,.65);line-height:1.7;max-width:480px;margin:0 auto 28px;">"'+esc(d.voice)+'"</p>':'')
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:auto;">'
+      +careers.map(function(cr){return '<span style="background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.9);font-size:.82rem;font-weight:600;padding:7px 18px;border-radius:24px;">'+esc(cr.title)+'</span>';}).join('')
+      +'</div>'
+      +'<div style="margin-top:32px;display:flex;gap:28px;justify-content:center;flex-wrap:wrap;">'
+      +(d.school?'<div style="text-align:center;"><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">School</div><div style="font-size:.8rem;color:rgba(255,255,255,.7);">'+esc(d.school)+'</div></div>':'')
+      +(d.region?'<div style="text-align:center;"><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Location</div><div style="font-size:.8rem;color:rgba(255,255,255,.7);">'+esc(d.region)+'</div></div>':'')
+      +(d.cm?'<div style="text-align:center;"><div style="font-size:.58rem;color:rgba(255,255,255,.35);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px;">Case Manager</div><div style="font-size:.8rem;color:rgba(255,255,255,.7);">'+esc(d.cm)+'</div></div>':'')
+      +'</div>'
       +'</div></div>';
   }
 
@@ -4132,7 +4241,7 @@ function showApiMsg(msg, type) {
   if(type !== 'error') setTimeout(function(){ el.style.display='none'; }, 4000);
 }
 
-function getApiKey() { return true; } // key handled server-side
+function getApiKey() { return true; } // key held server-side by Vercel
 
 
 var SAVE_KEY = 'transitionready_v3';
