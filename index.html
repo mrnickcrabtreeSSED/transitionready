@@ -101,14 +101,14 @@ body.theme-midnight {
 body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;}
 
 /* ── HEADER ── */
-.app-header{background:var(--navy);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:68px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,0.25);}
+.app-header{background:var(--navy);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:68px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,0.25);}
 .logo{display:flex;align-items:center;}
 .logo-text{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:#fff;}
 .logo-text span{color:var(--amber);}
 .header-badge{font-size:.7rem;font-weight:600;color:var(--slate-light);letter-spacing:.08em;text-transform:uppercase;}
 
 /* ── PROGRESS ── */
-.progress-wrap{background:#fff;border-bottom:1px solid var(--border);padding:0 40px;}
+.progress-wrap{background:#fff;border-bottom:1px solid var(--border);padding:0 48px;}
 .progress-steps{display:flex;max-width:1000px;margin:0 auto;}
 .step-tab{flex:1;padding:10px 4px 8px;text-align:center;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;position:relative;}
 .tab-progress-bar{height:4px;background:rgba(0,0,0,.07);border-radius:2px;margin:5px 4px 2px;overflow:hidden;}
@@ -136,18 +136,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--navy);
 .step-tab.done .step-label{color:var(--success);}
 
 /* ── LAYOUT ── */
-.main{max-width:880px;margin:0 auto;padding:34px 22px 80px;}
+.main{max-width:960px;margin:0 auto;padding:34px 48px 80px;}
 .step-page{display:none;}
 .step-page.active{display:block;animation:fadeIn .3s ease;}
 
 /* ── HEADINGS ── */
-.section-heading{margin-bottom:26px;}
+.section-heading{margin-bottom:26px;padding-left:12px;border-left:3px solid var(--amber);}
 .section-heading .eyebrow{font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin-bottom:5px;}
 .section-heading h2{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;line-height:1.2;}
 .section-heading p{margin-top:6px;color:var(--slate);font-size:.9rem;line-height:1.6;}
 
 /* ── CARDS ── */
-.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:16px;box-shadow:var(--shadow);}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px 32px;margin-bottom:16px;box-shadow:var(--shadow);}
 .card-title{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
 .card-title .icon{width:28px;height:28px;background:var(--amber-pale);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
 .card-title .icon.teal{background:var(--teal-light);}
@@ -864,10 +864,64 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
 .pf2-back-name{font-family:'Playfair Display',serif;font-size:1.1rem;color:rgba(255,255,255,.75);}
 .pf2-back-date{font-size:.75rem;color:rgba(255,255,255,.3);}
 
-@media(max-width:620px){.form-grid{grid-template-columns:1fr;}.gen-docs-grid{grid-template-columns:1fr;}.main{padding:18px 12px 60px;}.app-header,.progress-wrap{padding:0 12px;}.step-label{display:none;}}
+@media(max-width:620px){.form-grid{grid-template-columns:1fr;}.gen-docs-grid{grid-template-columns:1fr;}.main{padding:20px 20px 60px;}.app-header,.progress-wrap{padding:0 20px;}.step-label{display:none;}}
+
+/* ══ SPLASH SCREEN ══════════════════════════════════════════ */
+#splash-screen{
+  position:fixed;inset:0;z-index:99999;
+  background:linear-gradient(145deg,#0a1628 0%,#0f1f3d 55%,#1a3260 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 1.5s ease;
+}
+#splash-screen.fade-out{opacity:0;pointer-events:none;}
+.splash-mesh{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 80% 15%, rgba(42,143,168,.22) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 60% at 15% 85%, rgba(232,160,32,.15) 0%,transparent 60%);
+}
+.splash-inner{position:relative;z-index:2;text-align:center;padding:24px;}
+.splash-logo{margin-bottom:36px;display:flex;align-items:center;justify-content:center;gap:20px;}
+.splash-logo-icon{width:56px;height:56px;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.18);border-radius:14px;display:flex;align-items:center;justify-content:center;}
+.splash-logo-text{text-align:left;}
+.splash-logo-sure{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#fff;line-height:1.2;}
+.splash-logo-edu{font-family:'Playfair Display',serif;font-size:1.1rem;color:#a8bcd8;line-height:1.2;}
+.splash-divider{width:1px;height:40px;background:rgba(255,255,255,.2);}
+.splash-app-name{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:#e8a020;line-height:1.2;}
+.splash-title{font-family:'Playfair Display',serif;font-size:3.6rem;font-weight:700;color:#fff;line-height:1.0;letter-spacing:-.03em;margin-bottom:10px;}
+.splash-title span{color:#e8a020;}
+.splash-tagline{font-size:.92rem;color:rgba(255,255,255,.5);letter-spacing:.04em;margin-bottom:48px;line-height:1.6;max-width:360px;}
+.splash-bar-wrap{width:240px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+.splash-bar{height:100%;width:0%;background:linear-gradient(90deg,#2a8fa8,#e8a020);border-radius:2px;transition:width .05s linear;}
+.splash-status{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.08em;text-transform:uppercase;margin-top:12px;}
 </style>
 </head>
 <body>
+
+<!-- ══ SPLASH SCREEN ══════════════════════════════════════════ -->
+<div id="splash-screen">
+  <div class="splash-mesh"></div>
+  <div class="splash-inner">
+    <div class="splash-logo">
+      <svg width="200" height="48" viewBox="0 0 176 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="27" width="10" height="10" rx="1.5" fill="none" stroke="#4a90a4" stroke-width="2"/>
+        <rect x="15" y="29" width="9" height="8" rx="1.5" fill="#4a90a4"/>
+        <rect x="26" y="21" width="9" height="16" rx="1.5" fill="#2a6fa8"/>
+        <rect x="37" y="13" width="9" height="24" rx="1.5" fill="#1a3e7a"/>
+        <path d="M13 25 L37 7" stroke="#5bb8d4" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="37,3 43,9 35,11" fill="#5bb8d4"/>
+        <text x="54" y="19" font-family="'Playfair Display',Georgia,serif" font-size="13.5" font-weight="700" fill="#ffffff">Sure Step</text>
+        <text x="54" y="35" font-family="'Playfair Display',Georgia,serif" font-size="13.5" fill="#a8bcd8">Education</text>
+      </svg>
+      <div class="splash-divider"></div>
+      <div class="splash-app-name">TransitionReady</div>
+    </div>
+    <div class="splash-title">Your Future<br>Starts <span>Here.</span></div>
+    <div class="splash-tagline">Building your transition portfolio — step by step</div>
+    <div class="splash-bar-wrap"><div class="splash-bar" id="splash-bar"></div></div>
+    <div class="splash-status" id="splash-status">Loading…</div>
+  </div>
+</div>
 
 
 <!-- ══════════════════════════════════════
@@ -2014,6 +2068,38 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
 </main>
 
 <script>
+
+// ══ SPLASH SCREEN ════════════════════════════════════════════
+(function() {
+  var bar = document.getElementById('splash-bar');
+  var status = document.getElementById('splash-status');
+  var splash = document.getElementById('splash-screen');
+  var messages = ['Loading resources…','Preparing your workspace…','Almost ready…'];
+  var pct = 0;
+  var msgIdx = 0;
+
+  if(!splash) return;
+
+  var interval = setInterval(function() {
+    pct += Math.random() * 4 + 3;
+    if(pct > 100) pct = 100;
+    if(bar) bar.style.width = pct + '%';
+
+    if(pct > 35 && msgIdx === 0) { msgIdx = 1; if(status) status.textContent = messages[1]; }
+    if(pct > 70 && msgIdx === 1) { msgIdx = 2; if(status) status.textContent = messages[2]; }
+
+    if(pct >= 100) {
+      clearInterval(interval);
+      setTimeout(function() {
+        if(splash) {
+          splash.classList.add('fade-out');
+          setTimeout(function() { splash.style.display = 'none'; }, 1600);
+        }
+      }, 600);
+    }
+  }, 180);
+})();
+
 // ══════════════════════════════════════════════
 //  DISCOVERY QUESTION DATA
 // ══════════════════════════════════════════════
@@ -4698,7 +4784,7 @@ function hookProgressListeners() {
       <p>Anthropic's data usage policies apply to API interactions. See <a href="https://www.anthropic.com/policies" target="_blank" rel="noopener" style="color:#6366f1;">anthropic.com/policies</a>.</p>
 
       <h3 style="font-size:15px; margin:16px 0 6px;">7.4 Designated Responsible Individual</h3>
-      <p><strong>Nicholas Crabtree</strong><br>Co-Founder, Sure Step Education<br>Email: nicholas@surestepeducation.com</p>
+      <p><strong>Nicholas Crabtree</strong><br>Co-Founder, Sure Step Education<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2846414b404744495b685b5d5a4d5b5c4d584d4c5d4b495c414746064b4745">[email&#160;protected]</a></p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">8. Breach Notification</h2>
       <p>Because TransitionReady stores all student data locally on the student's device, the risk of a centralized data breach is minimal. However, in the event of an unauthorized disclosure of any pupil records, TransitionReady will notify the affected LEA within 72 hours, describe the nature and scope of the breach, and notify affected individuals as directed by the LEA and applicable law.</p>
@@ -4745,11 +4831,4 @@ function hookProgressListeners() {
       <p>TransitionReady is prepared to enter into a DPA with any LEA as required by AB 1584. We support the CSDPA template and the Student Data Privacy Consortium's National DPA template.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">18. Contact Information</h2>
-      <p><strong>Sure Step Education</strong><br>Nicholas Crabtree, Co-Founder<br>Email: nicholas@surestepeducation.com<br>Website: <a href="https://transitionready.vercel.app" style="color:#6366f1;">transitionready.vercel.app</a></p>
-
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
+      <p><strong>Sure Step Education</strong><br>Nicholas Crabtree, Co-Founder<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__"
