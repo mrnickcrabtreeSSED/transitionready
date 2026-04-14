@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TransitionReady — Transition Portfolio Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -894,6 +895,55 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
 .splash-bar-wrap{width:240px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 .splash-bar{height:100%;width:0%;background:linear-gradient(90deg,#2a8fa8,#e8a020);border-radius:2px;transition:width .05s linear;}
 .splash-status{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.08em;text-transform:uppercase;margin-top:12px;}
+
+/* ══ AUTH / LOGIN ════════════════════════════════════════════ */
+#auth-screen{position:fixed;inset:0;z-index:9998;background:linear-gradient(145deg,#0a1628 0%,#0f1f3d 55%,#1a3260 100%);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+#auth-screen.visible{display:flex;}
+.auth-mesh{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 80% 15%,rgba(42,143,168,.22) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 15% 85%,rgba(232,160,32,.15) 0%,transparent 60%);}
+.auth-card{position:relative;z-index:2;background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.14);border-radius:20px;padding:40px 44px;max-width:420px;width:100%;text-align:center;backdrop-filter:blur(8px);}
+.auth-logo{margin-bottom:28px;display:flex;align-items:center;justify-content:center;}
+.auth-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:8px;}
+.auth-subtitle{font-size:.88rem;color:rgba(255,255,255,.5);margin-bottom:32px;line-height:1.6;}
+.auth-google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;background:#fff;color:#1a2b4a;border:none;border-radius:10px;padding:14px 20px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:14px;}
+.auth-google-btn:hover{background:#f0f4ff;transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.2);}
+.auth-google-btn svg{flex-shrink:0;}
+.auth-note{font-size:.74rem;color:rgba(255,255,255,.3);line-height:1.6;}
+.auth-error{background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#ffb3b3;margin-bottom:16px;display:none;}
+
+/* ── USER BAR in header ── */
+.user-bar{display:flex;align-items:center;gap:10px;}
+.user-avatar{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.3);object-fit:cover;flex-shrink:0;}
+.user-avatar-fallback{width:30px;height:30px;border-radius:50%;background:var(--amber);color:var(--navy);font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.user-name{font-size:.78rem;color:rgba(255,255,255,.75);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-signout{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:4px 10px;font-family:'DM Sans',sans-serif;font-size:.72rem;cursor:pointer;transition:all .2s;}
+.user-signout:hover{background:rgba(255,255,255,.15);color:#fff;}
+
+/* ── CASE MANAGER DASHBOARD ── */
+#cm-dashboard{display:none;position:fixed;inset:0;z-index:9000;background:#f4f6fa;overflow-y:auto;}
+.cm-header{background:var(--navy);padding:0 48px;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.cm-title{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:#fff;}
+.cm-subtitle{font-size:.72rem;color:var(--slate-light);letter-spacing:.06em;text-transform:uppercase;}
+.cm-body{max-width:960px;margin:0 auto;padding:32px 48px;}
+.cm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+.cm-stat{background:#fff;border-radius:12px;padding:18px 20px;border:1px solid var(--border);}
+.cm-stat-num{font-size:2rem;font-weight:700;color:var(--navy);line-height:1;}
+.cm-stat-label{font-size:.75rem;color:var(--slate);margin-top:4px;}
+.cm-table-wrap{background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+.cm-table{width:100%;border-collapse:collapse;font-size:.86rem;}
+.cm-table th{background:var(--navy);color:#fff;padding:12px 16px;text-align:left;font-weight:600;font-size:.78rem;letter-spacing:.04em;}
+.cm-table td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--navy);}
+.cm-table tr:last-child td{border-bottom:none;}
+.cm-table tr:hover td{background:#f8f9fb;}
+.cm-progress-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:700;}
+.cm-progress-pill.done{background:var(--success-light);color:var(--success);}
+.cm-progress-pill.mid{background:var(--amber-pale);color:#9a6200;}
+.cm-progress-pill.low{background:#f0f2f7;color:var(--slate);}
+.cm-tab-bars{display:flex;gap:2px;align-items:flex-end;height:20px;}
+.cm-tab-bar{width:8px;border-radius:2px 2px 0 0;background:#dde3f0;transition:background .2s;}
+.cm-tab-bar.filled{background:var(--teal);}
+.cm-search{background:#f0f2f7;border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:'DM Sans',sans-serif;font-size:.86rem;width:240px;outline:none;}
+.cm-search:focus{border-color:var(--teal);background:#fff;}
+
 </style>
 </head>
 <body>
@@ -922,6 +972,72 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
     <div class="splash-status" id="splash-status">Loading…</div>
   </div>
 </div>
+
+<!-- ══ AUTH SCREEN ═════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-mesh"></div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="180" height="44" viewBox="0 0 176 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="27" width="10" height="10" rx="1.5" fill="none" stroke="#4a90a4" stroke-width="2"/>
+        <rect x="15" y="29" width="9" height="8" rx="1.5" fill="#4a90a4"/>
+        <rect x="26" y="21" width="9" height="16" rx="1.5" fill="#2a6fa8"/>
+        <rect x="37" y="13" width="9" height="24" rx="1.5" fill="#1a3e7a"/>
+        <path d="M13 25 L37 7" stroke="#5bb8d4" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="37,3 43,9 35,11" fill="#5bb8d4"/>
+        <text x="54" y="19" font-family="'Playfair Display',Georgia,serif" font-size="13.5" font-weight="700" fill="#ffffff">Sure Step</text>
+        <text x="54" y="35" font-family="'Playfair Display',Georgia,serif" font-size="13.5" fill="#a8bcd8">Education</text>
+      </svg>
+    </div>
+    <div class="auth-title">TransitionReady</div>
+    <div class="auth-subtitle">Sign in to save your portfolio and access it from any device.</div>
+    <div class="auth-error" id="auth-error"></div>
+    <button class="auth-google-btn" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-note">Your portfolio data is saved securely to your account.<br>Works on any device, any browser.</div>
+  </div>
+</div>
+
+<!-- ══ CASE MANAGER DASHBOARD ═════════════════════════════════ -->
+<div id="cm-dashboard">
+  <div class="cm-header">
+    <div>
+      <div class="cm-title">TransitionReady — Case Manager</div>
+      <div class="cm-subtitle">Student Progress Dashboard</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <input class="cm-search" id="cm-search" placeholder="Search students…" oninput="cmFilter()">
+      <button class="user-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+  <div class="cm-body">
+    <div class="cm-stats">
+      <div class="cm-stat"><div class="cm-stat-num" id="cm-total">—</div><div class="cm-stat-label">Total Students</div></div>
+      <div class="cm-stat"><div class="cm-stat-num" id="cm-active">—</div><div class="cm-stat-label">Active This Week</div></div>
+      <div class="cm-stat"><div class="cm-stat-num" id="cm-complete">—</div><div class="cm-stat-label">Portfolios Built</div></div>
+      <div class="cm-stat"><div class="cm-stat-num" id="cm-avg">—</div><div class="cm-stat-label">Avg Completion</div></div>
+    </div>
+    <div class="cm-table-wrap">
+      <table class="cm-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Email</th>
+            <th>Overall</th>
+            <th style="text-align:center;">Tab Progress</th>
+            <th>Last Active</th>
+          </tr>
+        </thead>
+        <tbody id="cm-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--slate);padding:32px;">Loading students…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 
 
 <!-- ══════════════════════════════════════
@@ -1077,6 +1193,7 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span id="save-status" style="font-size:.7rem;color:var(--slate-light);"></span>
+    <div class="user-bar" id="user-bar" style="display:none;"></div>
     <button onclick="saveProgress()" style="background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 14px;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,.22)'" onmouseout="this.style.background='rgba(255,255,255,.12)'">💾 Save</button>
     <button onclick="clearSavedProgress()" title="Clear saved progress" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">🗑️</button>
   </div>
@@ -4655,9 +4772,305 @@ function hookProgressListeners() {
 // ══════════════════════════════════════════════
 //  INITIALISE ON DOM READY
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+//  SUPABASE + AUTH
+// ══════════════════════════════════════════════
+var SUPA_URL = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbnN3bnZ2bWxua2JsbXFnemNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzU3NjEsImV4cCI6MjA5MTY1MTc2MX0.o_EkYTKi6u4weJ7-tSbDEJ0s04ahIOekBX11nG-ROrw';
+var _supa = null;
+var _currentUser = null;
+var CM_EMAILS = []; // add case manager emails here e.g. ['nick@surestepeducation.com']
+
+function getSupabase() {
+  if(!_supa && window.supabase) {
+    _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+  return _supa;
+}
+
+// ── SIGN IN ──────────────────────────────────
+function signInWithGoogle() {
+  var sb = getSupabase();
+  if(!sb) { showAuthError('Supabase not loaded. Please refresh.'); return; }
+  sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  }).then(function(res) {
+    if(res.error) showAuthError(res.error.message);
+  });
+}
+
+function signOut() {
+  var sb = getSupabase();
+  if(sb) sb.auth.signOut().then(function() {
+    _currentUser = null;
+    updateUserBar(null);
+    document.getElementById('auth-screen').classList.add('visible');
+    document.getElementById('cm-dashboard').style.display = 'none';
+    var app = document.querySelector('.app-header');
+    if(app) app.style.display = 'none';
+    var main = document.getElementById('main-app');
+    if(main) main.style.display = 'none';
+  });
+}
+
+function showAuthError(msg) {
+  var el = document.getElementById('auth-error');
+  if(el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+// ── SESSION HANDLER ──────────────────────────
+function handleSession(session) {
+  var user = session ? session.user : null;
+  _currentUser = user;
+
+  var authScreen = document.getElementById('auth-screen');
+  var mainApp    = document.getElementById('main-app');
+  var appHeader  = document.querySelector('.app-header');
+  var progressWrap = document.querySelector('.progress-wrap');
+  var mainEl     = document.querySelector('main');
+
+  if(!user) {
+    // Show login
+    if(authScreen) authScreen.classList.add('visible');
+    if(appHeader) appHeader.style.display = 'none';
+    if(progressWrap) progressWrap.style.display = 'none';
+    if(mainEl) mainEl.style.display = 'none';
+    return;
+  }
+
+  // Logged in
+  if(authScreen) { authScreen.classList.remove('visible'); authScreen.style.display = 'none'; }
+  updateUserBar(user);
+
+  // Case manager check
+  var isCM = CM_EMAILS.length > 0 && CM_EMAILS.indexOf(user.email) >= 0;
+  if(isCM) {
+    if(appHeader) appHeader.style.display = 'none';
+    if(progressWrap) progressWrap.style.display = 'none';
+    if(mainEl) mainEl.style.display = 'none';
+    loadCMDashboard();
+    return;
+  }
+
+  // Regular student
+  if(appHeader) appHeader.style.display = '';
+  if(progressWrap) progressWrap.style.display = '';
+  if(mainEl) mainEl.style.display = '';
+
+  // Load cloud data for this user
+  loadCloudData(user.id);
+}
+
+// ── USER BAR ─────────────────────────────────
+function updateUserBar(user) {
+  var bar = document.getElementById('user-bar');
+  if(!bar) return;
+  if(!user) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var initials = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name.split(' ').map(function(n){return n[0];}).join('').slice(0,2).toUpperCase()
+    : (user.email ? user.email[0].toUpperCase() : '?');
+  var avatarUrl = user.user_metadata && user.user_metadata.avatar_url;
+  var avatar = avatarUrl
+    ? '<img src="'+avatarUrl+'" class="user-avatar" alt="avatar">'
+    : '<div class="user-avatar-fallback">'+initials+'</div>';
+  var name = (user.user_metadata && user.user_metadata.full_name)
+    ? user.user_metadata.full_name.split(' ')[0]
+    : user.email.split('@')[0];
+  bar.style.display = 'flex';
+  bar.innerHTML = avatar
+    + '<span class="user-name">'+name+'</span>'
+    + '<button class="user-signout" onclick="signOut()">Sign Out</button>';
+}
+
+// ── CLOUD SAVE ───────────────────────────────
+async function saveToCloud(userId, data) {
+  var sb = getSupabase();
+  if(!sb || !userId) return;
+  try {
+    var payload = {
+      user_id: userId,
+      portfolio_data: data,
+      updated_at: new Date().toISOString(),
+      first_name: data.fields && data.fields['s-first'] || '',
+      last_name:  data.fields && data.fields['s-last']  || '',
+      overall_pct: calcOverallPct()
+    };
+    // Tab completion breakdown
+    for(var i=1; i<=7; i++) payload['tab_'+i+'_pct'] = calcTabProgress(i);
+
+    await sb.from('transition_portfolios').upsert(payload, { onConflict: 'user_id' });
+  } catch(e) {
+    console.warn('Cloud save failed:', e.message);
+  }
+}
+
+function calcOverallPct() {
+  var total = 0;
+  for(var i=1; i<=7; i++) total += calcTabProgress(i);
+  return Math.round(total / 7);
+}
+
+// ── CLOUD LOAD ───────────────────────────────
+async function loadCloudData(userId) {
+  var sb = getSupabase();
+  if(!sb || !userId) return;
+  try {
+    var res = await sb.from('transition_portfolios').select('portfolio_data').eq('user_id', userId).single();
+    if(res.data && res.data.portfolio_data) {
+      // Restore from cloud data (same format as localStorage)
+      var data = res.data.portfolio_data;
+      restoreFromData(data);
+      showSaveToast('✅ Portfolio loaded from your account');
+    }
+  } catch(e) {
+    console.warn('Cloud load failed:', e.message);
+    // Fall back to localStorage
+    restoreProgress();
+  }
+}
+
+// Override saveProgress to also push to cloud
+var _origSaveProgress = null;
+function initCloudSync() {
+  _origSaveProgress = saveProgress;
+  saveProgress = function() {
+    _origSaveProgress();
+    if(_currentUser) {
+      // Build save data and push to cloud
+      var data = buildSaveData();
+      saveToCloud(_currentUser.id, data);
+    }
+  };
+}
+
+function buildSaveData() {
+  var data = { fields:{}, pathways:{}, pathwayDetails:{}, discState:discState, careers:{}, personal:{}, samples:{}, resources:{}, generatedDocs:{}, discDetails:{}, theme:currentTheme, template:currentTemplate, savedAt:new Date().toISOString() };
+  ['s-first','s-last','s-phone','s-email','s-address','s-dob','s-grad','s-school','s-cm','s-region','s-gpa'].forEach(function(id){data.fields[id]=v(id);});
+  ['pw1','pw2','pw3','pw4','pw5','pw6','pw7','pw8'].forEach(function(id){var el=document.getElementById(id);data.pathways[id]=el?el.checked:false;});
+  ['pd-pw1-q','pd-pw2-q1','pd-pw2-q2','pd-pw3-q','pd-pw4-q1','pd-pw4-q2','pd-pw5-q','pd-pw6-q','pd-pw7-q','pd-pw8-q'].forEach(function(id){data.pathwayDetails[id]=v(id);});
+  ['c1-title','c1-cluster','c1-why','c2-title','c2-cluster','c2-why','c3-title','c3-cluster','c3-why'].forEach(function(id){data.careers[id]=v(id);});
+  ['q-strengths','q-environment','q-voice'].forEach(function(id){data.personal[id]=v(id);});
+  ['um1-title','um1-class','um1-skills','um2-title','um2-class','um2-thesis','um3-title','um3-class','um3-proud','um3-skills'].forEach(function(id){data.samples[id]=v(id);});
+  ['r-alta','r-jobcorps','r-ccc','r-losrios','r-dor','r-workability'].forEach(function(id){var el=document.getElementById(id);data.resources[id]=el?el.checked:false;});
+  data.resources['r-notes']=v('r-notes');
+  ['resume','cover','lor','plan'].forEach(function(id){if(generatedDocs[id])data.generatedDocs[id]=generatedDocs[id];});
+  Object.keys(DISC_DATA).forEach(function(cat){DISC_DATA[cat].forEach(function(item,i){var el=document.getElementById('di-'+cat+'-'+i+'-det');if(el&&el.value)data.discDetails[cat+'-'+i]=el.value;});});
+  if(studentPhoto) data.photo = studentPhoto;
+  return data;
+}
+
+function restoreFromData(data) {
+  try {
+    Object.keys(data.fields||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.fields[id]||'';});
+    Object.keys(data.pathways||{}).forEach(function(id){var el=document.getElementById(id);if(el){el.checked=data.pathways[id];if(data.pathways[id])onPathwayChange();}});
+    Object.keys(data.pathwayDetails||{}).forEach(function(id){var el=document.getElementById(id);if(el&&data.pathwayDetails[id])el.value=data.pathwayDetails[id];});
+    Object.keys(data.careers||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.careers[id]||'';});
+    Object.keys(data.personal||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.personal[id]||'';});
+    if(data.discState){Object.keys(data.discState).forEach(function(cat){Object.keys(data.discState[cat]).forEach(function(i){discState[cat][i]=data.discState[cat][i];var cb=document.getElementById('di-'+cat+'-'+i);if(cb){cb.checked=data.discState[cat][i];var row=cb.closest('.discovery-item');if(row&&data.discState[cat][i])row.classList.add('checked');}});updateCount(cat);updateSummary(cat);});}
+    Object.keys(data.discDetails||{}).forEach(function(key){var el=document.getElementById('di-'+key+'-det');if(el)el.value=data.discDetails[key];});
+    Object.keys(data.samples||{}).forEach(function(id){var el=document.getElementById(id);if(el&&data.samples[id])el.value=data.samples[id];});
+    Object.keys(data.resources||{}).forEach(function(id){var el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=data.resources[id];else el.value=data.resources[id]||'';});
+    Object.keys(data.generatedDocs||{}).forEach(function(id){generatedDocs[id]=data.generatedDocs[id];var rd=document.getElementById('doc-result-'+id);if(rd)rd.innerHTML=data.generatedDocs[id];});
+    if(data.photo){studentPhoto=data.photo;var img=document.getElementById('photo-preview-img');if(img){img.src=studentPhoto;img.style.display='block';document.getElementById('photo-placeholder').style.display='none';var rw=document.getElementById('photo-remove-wrap');if(rw)rw.style.display='block';}}
+    if(data.theme)selectScheme(data.theme);
+    if(data.template)selectTemplate(data.template);
+    updateAllProgress();
+  } catch(e) { console.warn('Restore from data failed:', e); }
+}
+
+// ── CASE MANAGER DASHBOARD ──────────────────
+async function loadCMDashboard() {
+  document.getElementById('cm-dashboard').style.display = 'block';
+  var sb = getSupabase();
+  if(!sb) return;
+  try {
+    var res = await sb.from('transition_portfolios')
+      .select('user_id,first_name,last_name,overall_pct,tab_1_pct,tab_2_pct,tab_3_pct,tab_4_pct,tab_5_pct,tab_6_pct,tab_7_pct,updated_at')
+      .order('updated_at', { ascending: false });
+
+    var rows = res.data || [];
+    _cmRows = rows;
+    renderCMTable(rows);
+
+    // Stats
+    document.getElementById('cm-total').textContent = rows.length;
+    var week = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    document.getElementById('cm-active').textContent = rows.filter(function(r){return r.updated_at > week;}).length;
+    document.getElementById('cm-complete').textContent = rows.filter(function(r){return (r.tab_7_pct||0) >= 50;}).length;
+    var avg = rows.length ? Math.round(rows.reduce(function(s,r){return s+(r.overall_pct||0);},0)/rows.length) : 0;
+    document.getElementById('cm-avg').textContent = avg + '%';
+  } catch(e) {
+    console.warn('CM load failed:', e.message);
+  }
+}
+
+var _cmRows = [];
+function cmFilter() {
+  var q = (document.getElementById('cm-search').value || '').toLowerCase();
+  renderCMTable(q ? _cmRows.filter(function(r){return (r.first_name+' '+r.last_name).toLowerCase().includes(q);}) : _cmRows);
+}
+
+function renderCMTable(rows) {
+  var tbody = document.getElementById('cm-tbody');
+  if(!tbody) return;
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--slate);padding:32px;">No students yet.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(function(r) {
+    var name = ((r.first_name||'') + ' ' + (r.last_name||'')).trim() || 'Unknown';
+    var pct = r.overall_pct || 0;
+    var pillClass = pct >= 80 ? 'done' : pct >= 40 ? 'mid' : 'low';
+    var bars = [1,2,3,4,5,6,7].map(function(i){
+      var tabPct = r['tab_'+i+'_pct'] || 0;
+      return '<div class="cm-tab-bar'+(tabPct>0?' filled':'')+'" style="height:'+(4+Math.round(tabPct/100*16))+'px;" title="Tab '+i+': '+tabPct+'%"></div>';
+    }).join('');
+    var updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    return '<tr>'
+      +'<td><strong>'+name+'</strong></td>'
+      +'<td style="color:var(--slate);font-size:.8rem;">'+r.user_id.slice(0,8)+'…</td>'
+      +'<td><span class="cm-progress-pill '+pillClass+'">'+pct+'%</span></td>'
+      +'<td style="text-align:center;"><div class="cm-tab-bars" style="justify-content:center;">'+bars+'</div></td>'
+      +'<td style="color:var(--slate);font-size:.82rem;">'+updated+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+// ── BOOT AUTH ────────────────────────────────
+function bootAuth() {
+  var sb = getSupabase();
+  if(!sb) {
+    // Supabase not loaded yet — show app without auth (fallback)
+    document.querySelector('.app-header').style.display = '';
+    document.querySelector('.progress-wrap').style.display = '';
+    document.querySelector('main').style.display = '';
+    return;
+  }
+
+  // Hide app until auth resolves
+  var appHeader = document.querySelector('.app-header');
+  var progressWrap = document.querySelector('.progress-wrap');
+  var mainEl = document.querySelector('main');
+  if(appHeader) appHeader.style.display = 'none';
+  if(progressWrap) progressWrap.style.display = 'none';
+  if(mainEl) mainEl.style.display = 'none';
+
+  // Check current session
+  sb.auth.getSession().then(function(res) {
+    handleSession(res.data.session);
+  });
+
+  // Listen for auth changes (e.g. after OAuth redirect)
+  sb.auth.onAuthStateChange(function(event, session) {
+    handleSession(session);
+    if(event === 'SIGNED_IN') {
+      initCloudSync();
+    }
+  });
+}
+
 (function init() {
   buildDiscovery();
   loadApiKey();
+  bootAuth();
 
   setTimeout(function() {
     hookProgressListeners();
