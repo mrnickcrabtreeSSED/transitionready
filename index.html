@@ -4968,6 +4968,7 @@ async function resolveUserRole(user) {
   var sb = getSupabase();
   if(!sb) return { role: 'student', school: null };
   try {
+    // First attempt: direct SELECT on the user's own row (RLS policy allows this)
     var res = await sb.from('user_roles')
       .select('role,school,full_name')
       .eq('user_id', user.id)
@@ -4977,14 +4978,30 @@ async function resolveUserRole(user) {
       return { role: res.data.role, school: res.data.school };
     }
 
-    // No row exists — auto-provision as student
+    // No row returned — could be genuinely new user, OR the SELECT hit an
+    // RLS/timing issue. Use UPSERT with ON CONFLICT DO NOTHING so we never
+    // accidentally downgrade an existing case_manager/admin row to student.
     var fullName = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
-    await sb.from('user_roles').insert({
+    await sb.from('user_roles').upsert({
       user_id: user.id,
       role: 'student',
       email: user.email,
       full_name: fullName
-    });
+    }, { onConflict: 'user_id', ignoreDuplicates: true });
+
+    // Re-read the row — if it already existed (with case_manager or admin role),
+    // the upsert with ignoreDuplicates left it untouched, and we'll now see the real role.
+    var reread = await sb.from('user_roles')
+      .select('role,school,full_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if(reread.data) {
+      return { role: reread.data.role, school: reread.data.school };
+    }
+
+    // Still nothing — we genuinely created a fresh student row but RLS is hiding it.
+    // Safe default.
     return { role: 'student', school: null };
   } catch(e) {
     console.warn('Role lookup failed, defaulting to student:', e);
