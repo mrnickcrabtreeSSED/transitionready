@@ -2949,6 +2949,97 @@ function dzDrop(e, id) {
   }
 }
 
+// ── WORK SAMPLE FILE HANDLERS (Tab 3) ──
+// Called by the inline onchange="handleFile(N)" on each sample's file input.
+function handleFile(n) {
+  var input = document.getElementById('file-' + n);
+  if(!input || !input.files || !input.files[0]) return;
+  processFile(n, input.files[0]);
+}
+
+function processFile(n, file) {
+  if(!file) return;
+
+  // Reject oversize files defensively (10 MB cap — anything bigger
+  // will blow up localStorage on save)
+  var MAX_BYTES = 10 * 1024 * 1024;
+  if(file.size > MAX_BYTES) {
+    alert('That file is ' + (file.size / 1024 / 1024).toFixed(1) + ' MB — please keep work samples under 10 MB so they save reliably.');
+    return;
+  }
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    var isImage = file.type.startsWith('image/');
+    var isPdf   = file.type === 'application/pdf';
+
+    // Store in the global uploadedFiles object (keyed 1, 2, 3)
+    uploadedFiles[n] = {
+      name: file.name,
+      type: file.type,
+      dataUrl: dataUrl,
+      isImage: isImage,
+      isPdf: isPdf,
+      size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
+    };
+
+    // Update drop zone state
+    var dz    = document.getElementById('dz-' + n);
+    var label = document.getElementById('dz-label-' + n);
+    var fp    = document.getElementById('fp-' + n);
+    var um    = document.getElementById('um-' + n);
+    var usc   = document.getElementById('usc-' + n);
+
+    if(dz)    dz.classList.add('has-file');
+    if(label) label.textContent = '✓ ' + file.name;
+    if(usc)   usc.classList.add('has-file');
+
+    // Render file preview
+    if(fp) {
+      fp.style.display = 'flex';
+      var thumb = isImage
+        ? '<img src="' + dataUrl + '" alt="' + escHtml(file.name) + '">'
+        : '<div style="width:80px;height:80px;background:#f0f4ff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:32px;">' + (isPdf ? '📄' : '📎') + '</div>';
+      fp.innerHTML = thumb
+        + '<div class="file-preview-info">'
+        + '<div class="file-preview-name">' + escHtml(file.name) + '</div>'
+        + '<div class="file-preview-size">' + uploadedFiles[n].size + '</div>'
+        + '</div>'
+        + '<button class="file-remove" onclick="removeWorkSample(' + n + ')">✕ Remove</button>';
+    }
+
+    // Show the metadata form for this sample
+    if(um) um.style.display = 'block';
+
+    // Trigger progress bar + autosave
+    if(typeof updateAllProgress === 'function') updateAllProgress();
+    if(typeof scheduleAutoSave === 'function') scheduleAutoSave();
+  };
+
+  reader.onerror = function() {
+    alert('Could not read that file. Try a different file or check that it is not corrupted.');
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function removeWorkSample(n) {
+  uploadedFiles[n] = null;
+  var dz    = document.getElementById('dz-' + n);
+  var label = document.getElementById('dz-label-' + n);
+  var fp    = document.getElementById('fp-' + n);
+  var input = document.getElementById('file-' + n);
+  var usc   = document.getElementById('usc-' + n);
+  if(dz)    dz.classList.remove('has-file');
+  if(label) label.textContent = 'Drop your file here or click to browse';
+  if(fp)    { fp.style.display = 'none'; fp.innerHTML = ''; }
+  if(input) input.value = '';
+  if(usc)   usc.classList.remove('has-file');
+  if(typeof updateAllProgress === 'function') updateAllProgress();
+  if(typeof scheduleAutoSave === 'function') scheduleAutoSave();
+}
+
 // ── MULTI-FILE UPLOAD (Step 6) ──
 function muzOver(e, cat) { e.preventDefault(); document.getElementById('muz-drop-'+cat).classList.add('drag-over'); }
 function muzLeave(cat) { document.getElementById('muz-drop-'+cat).classList.remove('drag-over'); }
@@ -5434,7 +5525,7 @@ function bootAuth() {
     <button onclick="document.getElementById('privacyModal').style.display='none'" style="position:sticky; top:0; float:right; background:#f3f4f6; border:none; border-radius:50%; width:36px; height:36px; font-size:20px; cursor:pointer; line-height:1; z-index:1;">✕</button>
 
     <h1 style="font-size:24px; margin:0 0 4px;">TransitionReady Privacy Policy</h1>
-    <p style="color:#888; margin:0 0 24px; font-size:14px;">Effective Date: April 8, 2026 · Last Updated: April 8, 2026</p>
+    <p style="color:#888; margin:0 0 24px; font-size:14px;">Effective Date: April 8, 2026 · Last Updated: April 20, 2026</p>
 
     <div style="font-size:14px; line-height:1.7; color:#333;">
 
@@ -5451,11 +5542,11 @@ function bootAuth() {
       <p><strong>Third Party / Provider:</strong> As defined in California Education Code § 49073.1 (AB 1584), the provider of digital educational software or services for the digital storage, management, and retrieval of pupil records — in this case, Sure Step Education, operating the TransitionReady application.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">3. Information We Collect</h2>
-      <p>TransitionReady collects only the information necessary to provide the Service. All information is entered directly by the student.</p>
+      <p>TransitionReady collects only the information necessary to provide the Service. All information is entered directly by the student or generated through the student's use of the Service.</p>
       <h3 style="font-size:15px; margin:16px 0 6px;">3.1 Student Information (Pupil Records)</h3>
       <ul style="padding-left:20px;">
         <li>Student name, contact information, and profile details</li>
-        <li>Profile photograph (if uploaded by the student)</li>
+        <li>Profile photograph (if uploaded by the student — stored locally on the student's device only, never uploaded to our servers)</li>
         <li>Education history and school information</li>
         <li>Work experience and employment history</li>
         <li>Career goals and five-year plan responses</li>
@@ -5464,11 +5555,27 @@ function bootAuth() {
         <li>Uploaded work samples and supporting documents</li>
         <li>Generated documents including resumes, cover letters, and letters of recommendation requests</li>
       </ul>
-      <h3 style="font-size:15px; margin:16px 0 6px;">3.2 Technical Information</h3>
+      <h3 style="font-size:15px; margin:16px 0 6px;">3.2 Account Information</h3>
+      <ul style="padding-left:20px;">
+        <li>Email address and name associated with the student's Google account, provided via Google OAuth sign-in</li>
+        <li>A unique system-generated user identifier</li>
+        <li>Role designation (student, case_manager, or admin)</li>
+        <li>Account creation and last-login timestamps</li>
+      </ul>
+      <h3 style="font-size:15px; margin:16px 0 6px;">3.3 Caseload Assignment Records</h3>
+      <p>When a student chooses to connect their portfolio to a case manager, we store:</p>
+      <ul style="padding-left:20px;">
+        <li>The student's user identifier</li>
+        <li>The case manager's or admin's user identifier</li>
+        <li>The role of the staff member (case_manager or admin)</li>
+        <li>Connection and disconnection timestamps, and the identity of the user who made each change (for FERPA audit-trail compliance under 34 CFR § 99.32)</li>
+        <li>Current status of the connection (active or revoked)</li>
+      </ul>
+      <h3 style="font-size:15px; margin:16px 0 6px;">3.4 Technical Information</h3>
       <ul style="padding-left:20px;">
         <li>Browser type and version (for responsive display purposes only)</li>
         <li>No cookies, analytics trackers, or advertising pixels are used</li>
-        <li>No user accounts, passwords, or authentication tokens are collected</li>
+        <li>Authentication tokens provided by Google OAuth and Supabase are stored in the browser solely to keep the student signed in; these tokens are not transmitted to any other party</li>
       </ul>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">4. How We Use Information</h2>
@@ -5496,23 +5603,31 @@ function bootAuth() {
 
       <h2 style="font-size:17px; margin:28px 0 8px;">7. Data Storage and Security</h2>
       <h3 style="font-size:15px; margin:16px 0 6px;">7.1 Where Data Is Stored</h3>
-      <p><strong>All student data is stored locally on the student's device</strong> using the web browser's localStorage feature. No student data is uploaded to, transmitted to, or stored on any Sure Step Education server, database, or cloud storage system, with the limited exception of AI-assisted writing features described in Section 7.3.</p>
+      <p>Student portfolio data is stored in <strong>two locations</strong>:</p>
+      <ul style="padding-left:20px;">
+        <li><strong>On the student's own device</strong>, via the web browser's localStorage, so the student can access their work offline and across sessions. This is the complete portfolio including profile fields, discovery responses, career goals, uploaded work sample files, and any uploaded student photograph.</li>
+        <li><strong>In a Supabase-hosted cloud database</strong> operated on behalf of Sure Step Education, so that students can access their portfolio from any device and so that connected case managers can view student progress (see Section 19). The cloud copy includes text-based portfolio data, discovery responses, career goals, and completion percentages. <strong>Student photographs and uploaded work-sample files are NOT uploaded to the cloud</strong> — they remain only on the student's device. Generated document HTML is also stored only locally.</li>
+      </ul>
+      <p>All data transmission between the student's device and the cloud database is encrypted via HTTPS/TLS.</p>
 
       <h3 style="font-size:15px; margin:16px 0 6px;">7.2 Security Measures</h3>
       <ul style="padding-left:20px;">
-        <li>Local-only data storage, eliminating the risk of centralized data breaches</li>
-        <li>HTTPS encryption for all data in transit</li>
-        <li>Secure server-side storage of API credentials — students never have access to API keys</li>
-        <li>No user account system, eliminating credential-based attack risk</li>
+        <li><strong>Row Level Security (RLS):</strong> Every table in our database enforces per-user access rules at the database level. A student can only read or write their own portfolio row. A case manager can only read portfolio rows for students who have actively connected to them. Access rules are enforced by the database itself, not by application code, providing defense in depth.</li>
+        <li><strong>Google OAuth authentication:</strong> We do not store or process passwords. Sign-in is handled entirely by Google. Sure Step Education never has access to account passwords.</li>
+        <li><strong>HTTPS/TLS encryption</strong> for all data in transit, including to/from the cloud database, the AI-assisted writing proxy, and any exports.</li>
+        <li><strong>API credentials stored server-side only:</strong> Students and case managers never see or have access to API keys.</li>
+        <li><strong>Staff role provisioning is manual:</strong> Case manager and administrator roles can only be assigned by a Sure Step Education database administrator. The application never auto-promotes users to staff roles. This prevents privilege escalation via self-service.</li>
+        <li><strong>Audit logs:</strong> Every case manager connection and disconnection is recorded with timestamps and the identity of the user who made the change, supporting FERPA audit-trail requirements under 34 CFR § 99.32.</li>
       </ul>
 
       <h3 style="font-size:15px; margin:16px 0 6px;">7.3 AI-Assisted Writing Features</h3>
       <p>TransitionReady uses the Anthropic Claude API to help students generate professional resume bullet points and cover letters. When these features are used:</p>
       <ul style="padding-left:20px;">
         <li>Relevant portions of student-entered information are transmitted to Anthropic's API via a secure server-side proxy</li>
-        <li>Data is processed in real time and is <strong>not stored by Anthropic</strong> beyond the immediate request</li>
+        <li>Data is processed in real time and is <strong>not stored by Anthropic</strong> beyond the immediate request, under Anthropic's zero-retention commercial terms for API customers</li>
         <li>Transmissions are encrypted via HTTPS and routed through a Vercel serverless function</li>
         <li>A local fallback function is available if the API is unreachable</li>
+        <li>Student information is minimized in API payloads — only the specific fields relevant to each generation request are transmitted, not the full portfolio</li>
       </ul>
       <p>Anthropic's data usage policies apply to API interactions. See <a href="https://www.anthropic.com/policies" target="_blank" rel="noopener" style="color:#6366f1;">anthropic.com/policies</a>.</p>
 
@@ -5520,24 +5635,47 @@ function bootAuth() {
       <p><strong>Nicholas Crabtree</strong><br>Co-Founder, Sure Step Education<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2846414b404744495b685b5d5a4d5b5c4d584d4c5d4b495c414746064b4745">[email&#160;protected]</a></p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">8. Breach Notification</h2>
-      <p>Because TransitionReady stores all student data locally on the student's device, the risk of a centralized data breach is minimal. However, in the event of an unauthorized disclosure of any pupil records, TransitionReady will notify the affected LEA within 72 hours, describe the nature and scope of the breach, and notify affected individuals as directed by the LEA and applicable law.</p>
+      <p>TransitionReady maintains a cloud database storing text-based portfolio data as described in Section 7.1. In the event of unauthorized access, disclosure, or compromise of this data, or of any pupil records stored on our infrastructure or that of our subprocessors, TransitionReady will:</p>
+      <ul style="padding-left:20px;">
+        <li>Notify the affected Local Educational Agency (LEA) within <strong>72 hours</strong> of discovery</li>
+        <li>Describe the nature, scope, and timing of the breach</li>
+        <li>Identify the categories and approximate number of pupil records affected</li>
+        <li>Describe remediation steps taken and planned</li>
+        <li>Cooperate with the LEA on parent/guardian notification consistent with applicable law</li>
+      </ul>
+      <p>Because student photographs, uploaded work-sample files, and generated documents remain only on the student's device, these categories are not at risk from a cloud-side breach. Students may reduce their own exposure by clearing browser site data when no longer needed.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">9. Parental Rights: Access, Review, and Correction</h2>
       <p>In compliance with FERPA and AB 1584, parents, legal guardians, or eligible pupils (students 18+) have the right to:</p>
       <ul style="padding-left:20px;">
-        <li><strong>Review</strong> information stored in TransitionReady directly on the student's device or via printed/PDF exports</li>
+        <li><strong>Review</strong> information stored in TransitionReady by signing in to the student's account, or via printed/PDF exports generated from within the application</li>
         <li><strong>Correct</strong> erroneous information directly within the application at any time</li>
-        <li><strong>Delete</strong> all data by clearing the browser's site data for TransitionReady or using the application's reset function</li>
+        <li><strong>Delete</strong> all locally-stored data by clearing the browser's site data for TransitionReady or using the application's reset function</li>
+        <li><strong>Request deletion</strong> of all cloud-stored records (account and portfolio data) by contacting Sure Step Education at the address in Section 18. Deletion requests are fulfilled within 30 days. A deletion removes all records from the production database and any routine backups within the standard backup retention cycle.</li>
       </ul>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">10. Pupil-Generated Content</h2>
-      <p>All data in TransitionReady is entered directly by the student. Students retain full possession and control of their pupil-generated content at all times and may export, print, download, or delete their content without restriction.</p>
+      <p>All portfolio content in TransitionReady is entered directly by the student or generated by the student through their use of AI-assisted writing features. Students retain full possession and control of their pupil-generated content at all times and may export, print, download, or delete their content without restriction. Connected case managers and administrators can view (but cannot edit) a student's portfolio in the current version of the Service.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">11. Data Retention and Deletion</h2>
-      <p>All pupil records reside only in the student's browser localStorage. Sure Step Education does not retain copies of student data on any server. Students may delete all data at any time by clearing browser site data. If a future version introduces server-side storage, this policy will be updated with retention timelines and deletion procedures consistent with AB 1584.</p>
+      <p>Portfolio data is retained as follows:</p>
+      <ul style="padding-left:20px;">
+        <li><strong>Local data</strong> (student photo, work sample files, generated document HTML): retained on the student's device until the student clears browser site data or uses the application's reset function.</li>
+        <li><strong>Cloud data</strong> (account record, portfolio text fields, discovery responses, career goals, completion metrics, caseload assignment records): retained as long as the student's account is active. Students or their parents/guardians may request deletion at any time per Section 9. Upon deletion request, we remove all records from the production database within 30 days, and any routine backups containing the data expire according to our standard backup retention schedule (currently 30 days).</li>
+        <li><strong>Audit trail records</strong> of case manager connections and disconnections: retained for the duration of the student's account plus 3 years, for FERPA audit-trail compliance under 34 CFR § 99.32. After that period, audit records are anonymized (user identifiers removed) before further retention for internal statistical purposes.</li>
+        <li><strong>Inactive accounts:</strong> accounts with no sign-in activity for 3 years will receive an email notice and will be deleted 90 days later if no activity resumes.</li>
+      </ul>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">12. FERPA Compliance</h2>
-      <p>TransitionReady supports FERPA compliance by storing all data locally on the student's device, limiting data transmission to the minimum necessary for AI features, not redisclosing PII except as authorized, and cooperating with LEAs on parental record requests.</p>
+      <p>TransitionReady supports FERPA compliance by:</p>
+      <ul style="padding-left:20px;">
+        <li>Storing portfolio data with per-user database access controls (Row Level Security) so that each student's record is accessible only to the student and to staff members actively assigned to their caseload</li>
+        <li>Never redisclosing personally identifiable information from pupil records to any third party except as authorized by the LEA, the eligible pupil, or as required by law</li>
+        <li>Maintaining audit-trail records of every staff/student connection for a minimum of 3 years past account closure, consistent with 34 CFR § 99.32</li>
+        <li>Honoring parent, guardian, and eligible-pupil requests to review, correct, and delete pupil records</li>
+        <li>Cooperating with LEAs on all FERPA-related requests and providing, on request, a list of all subprocessors with access to pupil records</li>
+        <li>Executing Data Processing Agreements with LEAs as described in Section 17</li>
+      </ul>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">13. SOPIPA Compliance</h2>
       <p>As an operator of an online service designed for K–12 school purposes, TransitionReady complies with SOPIPA (Cal. Bus. &amp; Prof. Code § 22584) by not engaging in targeted advertising, not amassing profiles for non-educational purposes, not selling student information, and maintaining reasonable security procedures.</p>
@@ -5545,17 +5683,20 @@ function bootAuth() {
       <h2 style="font-size:17px; margin:28px 0 8px;">14. COPPA Compliance</h2>
       <p>TransitionReady is designed for transition-age students, typically ages 16 and older. TransitionReady does not knowingly collect personal information from children under 13. If used by students under 13, we will obtain verifiable parental consent or rely on the school consent exception under COPPA.</p>
 
-      <h2 style="font-size:17px; margin:28px 0 8px;">15. Third-Party Services</h2>
+      <h2 style="font-size:17px; margin:28px 0 8px;">15. Third-Party Services (Subprocessors)</h2>
+      <p>TransitionReady uses the following subprocessors to deliver the Service. Each is bound by terms consistent with FERPA and AB 1584 requirements for educational data:</p>
       <table style="width:100%; border-collapse:collapse; margin:12px 0; font-size:13px;">
         <thead><tr style="border-bottom:2px solid #e5e7eb; text-align:left;">
-          <th style="padding:8px;">Service</th><th style="padding:8px;">Purpose</th><th style="padding:8px;">Data Processed</th>
+          <th style="padding:8px;">Service</th><th style="padding:8px;">Purpose</th><th style="padding:8px;">Data Processed</th><th style="padding:8px;">Location</th>
         </tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;">Vercel</td><td style="padding:8px;">Hosting &amp; serverless API proxy</td><td style="padding:8px;">No student data stored</td></tr>
-          <tr><td style="padding:8px;">Anthropic Claude API</td><td style="padding:8px;">AI-assisted writing</td><td style="padding:8px;">Limited work experience data; not stored</td></tr>
+          <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;"><strong>Supabase</strong></td><td style="padding:8px;">Authenticated cloud database &amp; user authentication backend</td><td style="padding:8px;">Account records, portfolio text fields, discovery responses, career goals, completion metrics, caseload assignment records. Does NOT store student photographs, uploaded work-sample files, or generated document HTML.</td><td style="padding:8px;">United States</td></tr>
+          <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;"><strong>Google OAuth</strong></td><td style="padding:8px;">Sign-in and authentication</td><td style="padding:8px;">User email address and name only, at the time of sign-in. No passwords are transmitted to or stored by TransitionReady.</td><td style="padding:8px;">United States</td></tr>
+          <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px;"><strong>Vercel</strong></td><td style="padding:8px;">Application hosting &amp; serverless API proxy</td><td style="padding:8px;">No persistent student data storage. Transient processing of API requests only.</td><td style="padding:8px;">United States (edge network)</td></tr>
+          <tr><td style="padding:8px;"><strong>Anthropic Claude API</strong></td><td style="padding:8px;">AI-assisted writing (resume bullets, cover letters)</td><td style="padding:8px;">Only the minimum student-entered information required for the specific generation request. Not stored beyond the immediate request under Anthropic's zero-retention commercial API terms.</td><td style="padding:8px;">United States</td></tr>
         </tbody>
       </table>
-      <p>We do not share, sell, or disclose student information to any additional third parties.</p>
+      <p>We do not share, sell, or disclose student information to any additional third parties. We will notify LEAs at least 30 days in advance of adding any new subprocessor that would process pupil records.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">16. Changes to This Privacy Policy</h2>
       <p>If we make material changes affecting pupil records, we will notify LEAs with active contracts at least 30 days prior.</p>
@@ -5565,6 +5706,46 @@ function bootAuth() {
 
       <h2 style="font-size:17px; margin:28px 0 8px;">18. Contact Information</h2>
       <p><strong>Sure Step Education</strong><br>Nicholas Crabtree, Co-Founder<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2846414b404744495b685b5d5a4d5b5c4d584d4c5d4b495c414746064b4745">[email&#160;protected]</a></p>
+
+      <h2 style="font-size:17px; margin:28px 0 8px;">19. Case Manager and Administrator Access</h2>
+      <p>TransitionReady allows students to share their portfolio with a designated case manager or school administrator. This section describes how that access works and what protections apply.</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.1 Student-Initiated Connection</h3>
+      <p>A connection between a student's portfolio and a staff member is <strong>always initiated by the student</strong>. On the student's Profile tab, the student may enter the email address of a case manager or administrator who has a TransitionReady staff account, and click "Connect" to share access. Staff members cannot add themselves to a student's caseload.</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.2 What Staff Can See</h3>
+      <p>A connected case manager or administrator has <strong>read-only access</strong> to the student's portfolio data, including:</p>
+      <ul style="padding-left:20px;">
+        <li>Profile information (name, school, graduation year, contact info)</li>
+        <li>Discovery responses and guided question answers</li>
+        <li>Career goals and pathway selections</li>
+        <li>Work sample titles, descriptions, and skills (the underlying file is not uploaded to the cloud and is NOT visible to staff)</li>
+        <li>Completion percentage across all seven tabs</li>
+        <li>Last activity timestamp</li>
+      </ul>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.3 What Staff Cannot Do</h3>
+      <ul style="padding-left:20px;">
+        <li>Staff <strong>cannot edit</strong> the student's portfolio in the current version of the Service. Future versions may introduce a "suggest edit" feature; any such feature will require the student to explicitly approve each suggested change before it is applied.</li>
+        <li>Staff cannot see or download uploaded work-sample files, uploaded supporting documents, or the student's profile photograph. These remain only on the student's device.</li>
+        <li>Staff cannot see a student who has not connected to them.</li>
+        <li>Staff cannot export or share a student's portfolio data outside the Service.</li>
+      </ul>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.4 Role Provisioning</h3>
+      <p>Case manager and administrator accounts are provisioned manually by Sure Step Education. The application does not automatically promote any user to a staff role. This ensures that only verified educational staff can be granted access to student portfolios.</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.5 Student Revocation</h3>
+      <p>A student may <strong>disconnect from a staff member at any time</strong> via the Profile tab. Disconnection is immediate. Once disconnected, the staff member can no longer view any portion of the student's portfolio. A student may reconnect to the same staff member later if they choose.</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.6 Audit Trail</h3>
+      <p>A permanent audit record of each connection and disconnection is retained, including the student's user identifier, the staff user identifier, the timestamp, and the identity of the user who performed the action. This supports FERPA audit-trail requirements under 34 CFR § 99.32. Audit records are retained for 3 years after account closure (see Section 11).</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.7 Staff Obligations</h3>
+      <p>Case managers and administrators with access to a student's portfolio are bound by the confidentiality and use restrictions described throughout this Privacy Policy. Staff may not disclose student information to any third party except as authorized by the student, by the student's parent or legal guardian (for students under 18), by the student's LEA, or as required by law. Staff access to pupil records constitutes access to educational records under FERPA and is subject to the same protections.</p>
+
+      <h3 style="font-size:15px; margin:16px 0 6px;">19.8 Technical Enforcement</h3>
+      <p>All access controls described in this section are enforced at the database level via Row Level Security policies. Access decisions are not left to client-side code. A staff member whose assignment has been revoked cannot access the student's portfolio even if they still have an active application session.</p>
 
     </div>
   </div>
