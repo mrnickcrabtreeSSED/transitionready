@@ -1310,6 +1310,37 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
 
   </div>
 
+  <!-- CONNECT CASE MANAGER CARD -->
+  <div class="card" style="border-left:4px solid var(--purple);" id="cm-connect-card">
+    <div class="card-title"><span class="icon" style="background:var(--purple-light);">🧑‍🏫</span> Connect Your Case Manager <span style="font-size:.75rem;font-weight:400;color:var(--slate);margin-left:6px;text-transform:none;letter-spacing:0;">Optional — share your progress with your teacher</span></div>
+
+    <div class="purple-banner">💜 If you enter your case manager's email, they'll be able to see your progress and help you along. <strong>They cannot edit anything — view-only.</strong> You can disconnect anytime.</div>
+
+    <!-- NOT CONNECTED VIEW -->
+    <div id="cm-connect-empty">
+      <div class="form-group">
+        <label>Case Manager / Teacher Email</label>
+        <div style="display:flex;gap:8px;align-items:stretch;">
+          <input type="email" id="cm-connect-email" placeholder="e.g. mr.nickerson@egusd.net" style="flex:1;">
+          <button class="btn btn-teal" onclick="connectCaseManager()" style="white-space:nowrap;">🔗 Connect</button>
+        </div>
+        <div id="cm-connect-msg" style="font-size:.8rem;margin-top:6px;min-height:18px;"></div>
+      </div>
+    </div>
+
+    <!-- CONNECTED VIEW (shown when assignment active) -->
+    <div id="cm-connect-active" style="display:none;">
+      <div style="background:var(--success-light);border:1.5px solid #a0d8ba;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+        <div style="font-size:22px;">✓</div>
+        <div style="flex:1;">
+          <div style="font-size:.88rem;font-weight:700;color:var(--success);">Connected to <span id="cm-connect-name">—</span></div>
+          <div style="font-size:.78rem;color:var(--slate);margin-top:2px;">Connected <span id="cm-connect-date">—</span> · <span id="cm-connect-role-label">Case Manager</span> can view your portfolio</div>
+        </div>
+        <button class="btn btn-ghost" onclick="disconnectCaseManager()" style="padding:6px 12px;font-size:.78rem;">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PATHWAY SECTION -->
   <div class="card" style="border-left:4px solid var(--teal);">
     <div class="card-title"><span class="icon teal">🗺️</span> Pathway After Graduation <span style="font-size:.75rem;font-weight:400;color:var(--slate);margin-left:6px;text-transform:none;letter-spacing:0;">Choose up to 3 — it's okay not to have it all figured out yet</span></div>
@@ -4836,7 +4867,8 @@ var SUPA_URL = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbnN3bnZ2bWxua2JsbXFnemNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzU3NjEsImV4cCI6MjA5MTY1MTc2MX0.o_EkYTKi6u4weJ7-tSbDEJ0s04ahIOekBX11nG-ROrw';
 var _supa = null;
 var _currentUser = null;
-var CM_EMAILS = ['mrnickcrabtree@gmail.com']; // administrators/case managers
+var _currentUserRole = null;   // 'student' | 'case_manager' | 'admin' | null — populated from user_roles table
+var _currentUserSchool = null; // school name from user_roles — used by admins for school-scoped caseload
 
 function getSupabase() {
   if(!_supa && window.supabase) {
@@ -4877,7 +4909,7 @@ function showAuthError(msg) {
 }
 
 // ── SESSION HANDLER ──────────────────────────
-function handleSession(session) {
+async function handleSession(session) {
   var user = session ? session.user : null;
   _currentUser = user;
 
@@ -4900,9 +4932,13 @@ function handleSession(session) {
   if(authScreen) { authScreen.classList.remove('visible'); authScreen.style.display = 'none'; }
   updateUserBar(user);
 
-  // Case manager check
-  var isCM = CM_EMAILS.length > 0 && CM_EMAILS.indexOf(user.email) >= 0;
-  if(isCM) {
+  // Resolve role from user_roles table (NEVER trust client-side email lists)
+  var role = await resolveUserRole(user);
+  _currentUserRole = role.role;
+  _currentUserSchool = role.school;
+
+  // Route based on role
+  if(role.role === 'case_manager' || role.role === 'admin') {
     if(appHeader) appHeader.style.display = 'none';
     if(progressWrap) progressWrap.style.display = 'none';
     if(mainEl) mainEl.style.display = 'none';
@@ -4910,13 +4946,50 @@ function handleSession(session) {
     return;
   }
 
-  // Regular student
+  // Default: student view
   if(appHeader) appHeader.style.display = '';
   if(progressWrap) progressWrap.style.display = '';
   if(mainEl) mainEl.style.display = '';
 
   // Load cloud data for this user
+  // Load cloud data for this user
   loadCloudData(user.id);
+
+  // Populate the Connect Case Manager card state
+  loadMyCaseManager();
+}
+
+// ── ROLE RESOLVER ────────────────────────────
+// Looks up the user's row in user_roles. If none exists, auto-provisions
+// a student row (first-time login). Returns { role, school }.
+// Case-manager/admin roles are NEVER auto-provisioned — they must be
+// set manually in Supabase by a DB admin for security.
+async function resolveUserRole(user) {
+  var sb = getSupabase();
+  if(!sb) return { role: 'student', school: null };
+  try {
+    var res = await sb.from('user_roles')
+      .select('role,school,full_name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if(res.data) {
+      return { role: res.data.role, school: res.data.school };
+    }
+
+    // No row exists — auto-provision as student
+    var fullName = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
+    await sb.from('user_roles').insert({
+      user_id: user.id,
+      role: 'student',
+      email: user.email,
+      full_name: fullName
+    });
+    return { role: 'student', school: null };
+  } catch(e) {
+    console.warn('Role lookup failed, defaulting to student:', e);
+    return { role: 'student', school: null };
+  }
 }
 
 // ── USER BAR ─────────────────────────────────
@@ -5033,21 +5106,192 @@ function restoreFromData(data) {
   } catch(e) { console.warn('Restore from data failed:', e); }
 }
 
+// ══════════════════════════════════════════════
+//  STUDENT-SIDE: CONNECT / DISCONNECT CASE MANAGER
+// ══════════════════════════════════════════════
+async function loadMyCaseManager() {
+  // Called after login when the student view mounts. Checks if an
+  // active assignment exists and updates the Connect card UI accordingly.
+  if(!_currentUser) return;
+  var sb = getSupabase();
+  if(!sb) return;
+  try {
+    var assignRes = await sb.from('caseload_assignments')
+      .select('id,staff_user_id,staff_role,assigned_at')
+      .eq('student_user_id', _currentUser.id)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if(!assignRes.data) {
+      var empty = document.getElementById('cm-connect-empty');
+      var active = document.getElementById('cm-connect-active');
+      if(empty) empty.style.display = 'block';
+      if(active) active.style.display = 'none';
+      return;
+    }
+
+    // Active assignment — look up staff name
+    var roleRes = await sb.from('user_roles')
+      .select('full_name,email')
+      .eq('user_id', assignRes.data.staff_user_id)
+      .maybeSingle();
+
+    var name = (roleRes.data && (roleRes.data.full_name || roleRes.data.email)) || 'your case manager';
+    var date = new Date(assignRes.data.assigned_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    var roleLabel = assignRes.data.staff_role === 'admin' ? 'Admin' : 'Case Manager';
+
+    var empty = document.getElementById('cm-connect-empty');
+    var active = document.getElementById('cm-connect-active');
+    if(empty) empty.style.display = 'none';
+    if(active) active.style.display = 'block';
+    var nameEl = document.getElementById('cm-connect-name');
+    var dateEl = document.getElementById('cm-connect-date');
+    var roleEl = document.getElementById('cm-connect-role-label');
+    if(nameEl) nameEl.textContent = name;
+    if(dateEl) dateEl.textContent = date;
+    if(roleEl) roleEl.textContent = roleLabel;
+  } catch(e) {
+    console.warn('loadMyCaseManager failed:', e);
+  }
+}
+
+async function connectCaseManager() {
+  var emailEl = document.getElementById('cm-connect-email');
+  var msgEl = document.getElementById('cm-connect-msg');
+  var email = (emailEl ? emailEl.value : '').trim().toLowerCase();
+  if(!msgEl) return;
+
+  if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+    msgEl.textContent = '⚠️ Please enter a valid email address.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+  if(!_currentUser) {
+    msgEl.textContent = '⚠️ Please sign in first.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+  if(email === _currentUser.email.toLowerCase()) {
+    msgEl.textContent = '⚠️ That\'s your own email. Enter your case manager\'s email.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  msgEl.textContent = 'Looking up…';
+  msgEl.style.color = 'var(--slate)';
+
+  var sb = getSupabase();
+  if(!sb) return;
+
+  try {
+    // Look up the staff user by email in user_roles
+    var staffRes = await sb.from('user_roles')
+      .select('user_id,role,full_name')
+      .ilike('email', email)
+      .in('role', ['case_manager','admin'])
+      .maybeSingle();
+
+    if(!staffRes.data) {
+      msgEl.innerHTML = '⚠️ No case manager account found with that email. <br><span style="font-size:.75rem;color:var(--slate);">Your teacher needs to sign in to TransitionReady at least once before you can connect.</span>';
+      msgEl.style.color = 'var(--red)';
+      return;
+    }
+
+    // Create the assignment (RLS policy allows student to insert their own row)
+    var insertRes = await sb.from('caseload_assignments').insert({
+      staff_user_id:   staffRes.data.user_id,
+      student_user_id: _currentUser.id,
+      staff_role:      staffRes.data.role,
+      status:          'active',
+      consent_shown_at: new Date().toISOString()
+    });
+
+    if(insertRes.error) {
+      // Unique constraint violation = already connected (perhaps revoked)
+      if(insertRes.error.code === '23505') {
+        msgEl.textContent = '⚠️ You already have an assignment with this teacher. Try disconnecting first.';
+      } else {
+        msgEl.textContent = '⚠️ Could not connect: ' + insertRes.error.message;
+      }
+      msgEl.style.color = 'var(--red)';
+      return;
+    }
+
+    msgEl.textContent = '✓ Connected';
+    msgEl.style.color = 'var(--success)';
+    showSaveToast('✅ Connected to ' + (staffRes.data.full_name || email));
+    await loadMyCaseManager();
+  } catch(e) {
+    console.warn('connectCaseManager failed:', e);
+    msgEl.textContent = '⚠️ ' + e.message;
+    msgEl.style.color = 'var(--red)';
+  }
+}
+
+async function disconnectCaseManager() {
+  if(!confirm('Disconnect your case manager? They will no longer be able to see your portfolio. You can reconnect anytime.')) return;
+  if(!_currentUser) return;
+  var sb = getSupabase();
+  if(!sb) return;
+  try {
+    var res = await sb.from('caseload_assignments')
+      .update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: _currentUser.id })
+      .eq('student_user_id', _currentUser.id)
+      .eq('status', 'active');
+
+    if(res.error) throw res.error;
+    showSaveToast('✅ Case manager disconnected');
+    await loadMyCaseManager();
+  } catch(e) {
+    console.warn('disconnectCaseManager failed:', e);
+    showSaveToast('⚠️ Could not disconnect: ' + e.message);
+  }
+}
+
 // ── CASE MANAGER DASHBOARD ──────────────────
 async function loadCMDashboard() {
   document.getElementById('cm-dashboard').style.display = 'block';
   var sb = getSupabase();
-  if(!sb) return;
+  if(!sb || !_currentUser) return;
+
+  // Update dashboard header to reflect actual role
+  var titleEl = document.querySelector('.cm-title');
+  if(titleEl) {
+    titleEl.textContent = _currentUserRole === 'admin'
+      ? 'TransitionReady — Admin Dashboard'
+      : 'TransitionReady — Case Manager';
+  }
+
   try {
-    var res = await sb.from('transition_portfolios')
+    // RLS enforces this: only rows where auth.uid() = staff_user_id come back
+    var assignRes = await sb.from('caseload_assignments')
+      .select('student_user_id,assigned_at,staff_role')
+      .eq('staff_user_id', _currentUser.id)
+      .eq('status', 'active');
+
+    var studentIds = (assignRes.data || []).map(function(a) { return a.student_user_id; });
+
+    if(studentIds.length === 0) {
+      renderCMTable([]);
+      document.getElementById('cm-total').textContent    = '0';
+      document.getElementById('cm-active').textContent   = '0';
+      document.getElementById('cm-complete').textContent = '0';
+      document.getElementById('cm-avg').textContent      = '—';
+      return;
+    }
+
+    // RLS will filter to only assigned students (double-check defense in depth)
+    var portRes = await sb.from('transition_portfolios')
       .select('user_id,first_name,last_name,overall_pct,tab_1_pct,tab_2_pct,tab_3_pct,tab_4_pct,tab_5_pct,tab_6_pct,tab_7_pct,updated_at')
+      .in('user_id', studentIds)
       .order('updated_at', { ascending: false });
 
-    var rows = res.data || [];
+    var rows = portRes.data || [];
     _cmRows = rows;
     renderCMTable(rows);
 
-    // Stats
+    // Stats (unchanged — but now scoped to actual caseload)
     document.getElementById('cm-total').textContent = rows.length;
     var week = new Date(Date.now() - 7*24*60*60*1000).toISOString();
     document.getElementById('cm-active').textContent = rows.filter(function(r){return r.updated_at > week;}).length;
@@ -5055,7 +5299,9 @@ async function loadCMDashboard() {
     var avg = rows.length ? Math.round(rows.reduce(function(s,r){return s+(r.overall_pct||0);},0)/rows.length) : 0;
     document.getElementById('cm-avg').textContent = avg + '%';
   } catch(e) {
-    console.warn('CM load failed:', e.message);
+    console.warn('CM dashboard load failed:', e.message);
+    var tbody = document.getElementById('cm-tbody');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px;">Failed to load caseload: '+escHtml(e.message)+'</td></tr>';
   }
 }
 
