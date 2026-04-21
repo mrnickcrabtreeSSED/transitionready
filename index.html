@@ -773,8 +773,8 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
 
   /* ── Content page: no break before (flows after its header) ── */
   .pf3-page{
-    page-break-before:avoid;
-    break-before:avoid;
+    page-break-before:always;
+    break-before:page;
     page-break-inside:auto;
   }
 
@@ -840,7 +840,7 @@ textarea{resize:vertical;min-height:82px;line-height:1.6;}
   /* ── Padding adjustments for print margins ── */
   .pf3-cover-inner{padding:36px 48px;}
   .pf3-sec-header{padding:20px 48px;}
-  .pf3-page{padding:24px 48px 32px;}
+  .pf3-page{padding:32px 52px 40px;}
   .pf3-back{padding:48px;}
 }
 .pf2-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
@@ -2979,6 +2979,9 @@ let currentStep = 1;
 let generatedDocs = {};
 
 function goToStep(n) {
+  // Autosave whatever's on the current tab BEFORE leaving it
+  try { if(typeof saveProgress === 'function') saveProgress(true); } catch(e) { console.warn('autosave on tab switch failed:', e); }
+
   document.getElementById('step-'+currentStep).classList.remove('active');
   document.getElementById('tab-'+currentStep).classList.remove('active');
   currentStep = n;
@@ -3750,8 +3753,15 @@ function buildPortfolio() {
     // Strip the outer doc-section wrapper that has its own header - use raw tdoc content
     var inner = content;
     // Extract just the .doc-section-body content if wrapped
-    var bodyMatch = content.match(/class="doc-section-body"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*$/);
-    if(bodyMatch) inner = bodyMatch[1];
+    var bodyTagIdx = content.indexOf('class="doc-section-body"');
+    if(bodyTagIdx >= 0) {
+      var bStart = content.indexOf('>', bodyTagIdx) + 1;
+      var bEnd = content.lastIndexOf('</div>');
+      bEnd = content.lastIndexOf('</div>', bEnd - 1);
+      if(bStart > 0 && bEnd > bStart) inner = content.substring(bStart, bEnd);
+    }
+    inner = inner.replace(/<div class="doc-section-header"[\s\S]*?<\/div>/g, '');
+    inner = inner.replace(/<button[^>]*>🖨️[^<]*<\/button>/g, '');
     return '<div class="pf3-doc-block">'
       +'<div class="pf3-doc-tab">'+icon+' '+title+'</div>'
       +'<div class="pf3-doc-body">'+inner+'</div>'
@@ -3952,14 +3962,15 @@ function buildPortfolio() {
   }
 
   // ════════════════════════════════════════════
-  //  PAGE 2 — PROFILE + GOALS (Tabs 1 & 2)
+  //  PAGE 2 — MY PROFILE & GOALS
   // ════════════════════════════════════════════
   html += '<div class="pf3-page">'
     +secHeader('01','My Profile & Goals','linear-gradient(135deg,#0f1f3d 0%,#1a3260 100%)');
 
+  // Contact + Pathway side by side
   html += '<div class="pf3-two-col">';
 
-  // LEFT: contact info + pathway
+  // LEFT: contact info
   html += '<div class="pf3-col">'
     +'<div class="pf3-widget">'
     +'<div class="pf3-widget-title" style="color:#0f1f3d;">📋 Contact & Basic Info</div>';
@@ -3987,7 +3998,7 @@ function buildPortfolio() {
   }
   html += '</div>'; // left col
 
-  // RIGHT: voice quote + career goals
+  // RIGHT: voice + strengths + environment
   html += '<div class="pf3-col">';
   if(d.voice) {
     html += '<div class="pf3-voice-block">'
@@ -3996,7 +4007,6 @@ function buildPortfolio() {
       +'<div class="pf3-voice-by">— '+esc(d.firstName)+', in their own words</div>'
       +'</div>';
   }
-
   if(d.strengths) {
     var strItems = d.strengths.split(/[\n,•]/).filter(function(s){return s.trim();}).map(function(s){return s.trim().replace(/^\d+\.\s*/,'');});
     html += '<div class="pf3-widget" style="margin-top:16px;">'
@@ -4012,35 +4022,41 @@ function buildPortfolio() {
   }
   html += '</div>'; // right col
   html += '</div>'; // two-col
-
-  // Career cards full width
-  if(careers.length) {
-    html += '<div class="pf3-career-row">';
-    var cColors = ['#e8a020','#2a8fa8','#7c3aed'];
-    careers.forEach(function(cr,i){
-      html += '<div class="pf3-career-card3" style="border-top:4px solid '+cColors[i]+'">'
-        +'<div class="pf3-career-card3-num" style="color:'+cColors[i]+'">0'+(i+1)+'</div>'
-        +'<div class="pf3-career-card3-title">'+esc(cr.title)+'</div>'
-        +'<div class="pf3-career-card3-cluster">'+esc(cr.cluster)+'</div>'
-        +(cr.why?'<div class="pf3-career-card3-why">"'+esc(cr.why)+'"</div>':'')
-        +'</div>';
-    });
-    html += '</div>';
-  }
   html += '</div>'; // page 2
 
   // ════════════════════════════════════════════
-  //  PAGE 3 — EXPERIENCE (Tab 2 Discovery)
+  //  PAGE 2b — CAREER INTERESTS (own page so they breathe)
+  // ════════════════════════════════════════════
+  if(careers.length) {
+    html += '<div class="pf3-page">'
+      +secHeader('01b','My Career Interests','linear-gradient(135deg,#0f1f3d 0%,#1a3260 100%)');
+    html += '<p class="pf3-section-intro">These are the career paths I am most excited about pursuing after graduation.</p>';
+    html += '<div class="pf3-career-row" style="display:grid;grid-template-columns:repeat('+Math.min(careers.length,3)+',1fr);gap:20px;margin-top:20px;">';
+    var cColors = ['#e8a020','#2a8fa8','#7c3aed'];
+    careers.forEach(function(cr,i){
+      html += '<div class="pf3-career-card3" style="border-top:4px solid '+cColors[i]+';padding:24px 20px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);">'
+        +'<div class="pf3-career-card3-num" style="color:'+cColors[i]+';font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;">Career 0'+(i+1)+'</div>'
+        +'<div class="pf3-career-card3-title" style="font-family:\'Playfair Display\',serif;font-size:1.3rem;font-weight:700;color:#0f1f3d;margin-bottom:6px;">'+esc(cr.title)+'</div>'
+        +(cr.cluster?'<div class="pf3-career-card3-cluster" style="font-size:.8rem;color:#6b7a99;margin-bottom:10px;">'+esc(cr.cluster)+'</div>':'')
+        +(cr.why?'<div class="pf3-career-card3-why" style="font-size:.86rem;color:#4a5568;font-style:italic;border-left:3px solid '+cColors[i]+';padding-left:10px;line-height:1.6;">"'+esc(cr.why)+'"</div>':'')
+        +'</div>';
+    });
+    html += '</div>';
+    html += '</div>'; // page 2b
+  }
+
+  // ════════════════════════════════════════════
+  //  PAGE 3 — MY EXPERIENCE (Discovery)
   // ════════════════════════════════════════════
   html += '<div class="pf3-page">'
     +secHeader('02','My Experience','linear-gradient(135deg,#c07810 0%,#e8a020 100%)');
 
   html += '<div class="pf3-exp-grid">';
   var expSections = [
-    {cat:workItems,   label:'💼 Work Experience',          accent:'#e8a020', bg:'#fff8e6'},
-    {cat:commItems,   label:'🤝 Community & Service',       accent:'#2a8fa8', bg:'#e0f4f8'},
-    {cat:hobbyItems,  label:'🎨 Hobbies & Interests',       accent:'#7c3aed', bg:'#f3e8ff'},
-    {cat:schoolItems, label:'🏫 School & Learning',         accent:'#2e7d52', bg:'#e8f5ee'},
+    {cat:workItems,   label:'💼 Work Experience',       accent:'#e8a020', bg:'#fff8e6'},
+    {cat:commItems,   label:'🤝 Community & Service',    accent:'#2a8fa8', bg:'#e0f4f8'},
+    {cat:hobbyItems,  label:'🎨 Hobbies & Interests',    accent:'#7c3aed', bg:'#f3e8ff'},
+    {cat:schoolItems, label:'🏫 School & Learning',      accent:'#2e7d52', bg:'#e8f5ee'},
   ];
   expSections.forEach(function(s){
     if(!s.cat.length) return;
@@ -4055,27 +4071,53 @@ function buildPortfolio() {
   html += '</div></div>'; // exp-grid + page
 
   // ════════════════════════════════════════════
-  //  PAGE 4 — WORK SAMPLES (Tab 3)
+  //  PAGES 4a/b/c — WORK SAMPLES (one per page)
   // ════════════════════════════════════════════
-  html += '<div class="pf3-page">'
-    +secHeader('03','Work Samples','linear-gradient(135deg,#5b21b6 0%,#7c3aed 100%)');
-  html += '<p class="pf3-section-intro">These samples demonstrate my research ability, writing skills, and hands-on technical accomplishments.</p>';
-  html += '<div class="pf3-samples-col">'
-    +sampleEmbed(1,'📊','Presentation','#e8a020')
-    +sampleEmbed(2,'✍️','Writing Sample','#2a8fa8')
-    +sampleEmbed(3,'⭐','Pride Project','#7c3aed')
-    +'</div>';
-  if(!d.samples[1].title && !d.samples[2].title && !d.samples[3].title) {
-    html += '<div class="pf3-empty">Upload work samples in Step 3 to include them here.</div>';
+  var sampleDefs = [
+    {n:1, icon:'📊', label:'Presentation', accent:'#e8a020'},
+    {n:2, icon:'✍️', label:'Writing Sample', accent:'#2a8fa8'},
+    {n:3, icon:'⭐', label:'Pride Project',  accent:'#7c3aed'}
+  ];
+  var hasSamples = sampleDefs.some(function(sd){return d.samples[sd.n].title||d.samples[sd.n].file;});
+  if(hasSamples) {
+    sampleDefs.forEach(function(sd, idx) {
+      var s = d.samples[sd.n];
+      if(!s.title && !s.file) return;
+      var pageNum = idx === 0 ? '03a' : idx === 1 ? '03b' : '03c';
+      html += '<div class="pf3-page">'
+        +secHeader(pageNum,'Work Sample — '+sd.label,'linear-gradient(135deg,#5b21b6 0%,#7c3aed 100%)');
+      html += '<div style="padding:20px 0;">';
+      // Media
+      if(s.file && s.file.isImage) {
+        html += '<img src="'+s.file.dataUrl+'" style="max-width:100%;max-height:420px;display:block;margin:0 auto 20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);" alt="'+esc(s.title||sd.label)+'">';
+      } else if(s.file && s.file.isPdf) {
+        html += '<iframe src="'+s.file.dataUrl+'" style="width:100%;height:480px;border:none;border-radius:8px;margin-bottom:20px;"></iframe>';
+      }
+      // Meta card
+      html += '<div style="background:#fff;border-radius:12px;border:1px solid #dde3f0;padding:24px 28px;border-left:5px solid '+sd.accent+';">';
+      if(s.title) html += '<div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;font-weight:700;color:#0f1f3d;margin-bottom:6px;">'+esc(s.title)+'</div>';
+      if(s.class) html += '<div style="font-size:.84rem;color:#6b7a99;margin-bottom:14px;">'+esc(s.class)+'</div>';
+      if(s.skills) html += '<div style="margin-bottom:10px;"><strong style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:'+sd.accent+';">Skills Demonstrated</strong><p style="font-size:.9rem;color:#4a5568;margin-top:4px;">'+esc(s.skills)+'</p></div>';
+      if(s.thesis) html += '<div style="margin-bottom:10px;"><strong style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:'+sd.accent+';">Main Argument</strong><p style="font-size:.9rem;color:#4a5568;margin-top:4px;">'+esc(s.thesis)+'</p></div>';
+      if(s.proud) html += '<div style="border-left:3px solid '+sd.accent+';padding-left:14px;font-style:italic;font-size:.92rem;color:#4a5568;line-height:1.65;">"'+esc(s.proud)+'"</div>';
+      html += '</div>';
+      html += '</div>';
+      html += '</div>'; // page
+    });
+  } else {
+    html += '<div class="pf3-page">'
+      +secHeader('03','Work Samples','linear-gradient(135deg,#5b21b6 0%,#7c3aed 100%)')
+      +'<div class="pf3-empty">Upload work samples in Step 3 to include them here.</div>'
+      +'</div>';
   }
-  html += '</div>'; // page
 
   // ════════════════════════════════════════════
-  //  PAGE 5 — TRANSITION RESOURCES (Tab 4)
+  //  PAGE 5 — TRANSITION RESOURCES
   // ════════════════════════════════════════════
   html += '<div class="pf3-page">'
     +secHeader('04','Transition Resources','linear-gradient(135deg,#1a5c3a 0%,#2e7d52 100%)');
 
+  // FAFSA always shown
   html += '<div class="pf3-fafsa-block">'
     +'<div class="pf3-fafsa-icon">🎓</div>'
     +'<div class="pf3-fafsa-body">'
@@ -4083,7 +4125,9 @@ function buildPortfolio() {
     +'<div class="pf3-fafsa-text">Filing FAFSA at studentaid.gov opens the door to grants, work-study, and loans for college, trade school, and vocational programs. It is free and takes approximately 30 minutes. California priority deadline is typically March 2.</div>'
     +'</div></div>';
 
+  // Only show selected resources
   if(resList.length) {
+    html += '<div style="margin-top:16px;margin-bottom:6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#2e7d52;">Selected Programs & Resources</div>';
     html += '<div class="pf3-res-grid">';
     resList.forEach(function(r){
       html += '<div class="pf3-res-card">'
@@ -4095,53 +4139,96 @@ function buildPortfolio() {
         +'</div></div>';
     });
     html += '</div>';
-  } else {
-    html += '<div class="pf3-empty">Select transition resources in Step 4 to include them here.</div>';
   }
-  html += '</div>'; // page
+  html += '</div>'; // page 5
 
   // ════════════════════════════════════════════
-  //  PAGE 6 — GENERATED DOCUMENTS (Tab 5)
+  //  PAGES 6a-d — EACH DOCUMENT GETS ITS OWN PAGE
   // ════════════════════════════════════════════
-  // Read include checkboxes (default true if element missing)
   var cb = function(id) { var el = document.getElementById(id); return el ? el.checked : true; };
   var incResume = cb('inc-resume');
   var incCover  = cb('inc-cover');
   var incLor    = cb('inc-lor');
   var incPlan   = cb('inc-plan');
-  var incSupLor  = cb('inc-sup-lor');
-  var incSupAward= cb('inc-sup-award');
-  var incSupCert = cb('inc-sup-cert');
+  var incSupLor   = cb('inc-sup-lor');
+  var incSupAward = cb('inc-sup-award');
+  var incSupCert  = cb('inc-sup-cert');
 
-  var hasDocs = (incResume && generatedDocs.resume) || (incCover && generatedDocs.cover) || (incLor && generatedDocs.lor) || (incPlan && generatedDocs.plan);
-  html += '<div class="pf3-page">'
-    +secHeader('05','My Transition Documents','linear-gradient(135deg,#0f1f3d 0%,#243d72 100%)');
-  if(hasDocs) {
-    html += '<p class="pf3-section-intro">These documents were generated from my personal profile, experience, and career goals. They are ready to share with employers, training programs, and community partners.</p>';
-    if(incResume) html += docBlock('resume','📄','Professional Resume');
-    if(incCover)  html += docBlock('cover','✉️','Career Intent Cover Letter');
-    if(incLor)    html += docBlock('lor','📝','Letter of Recommendation Request Sheet');
-    if(incPlan)   html += docBlock('plan','🗓️','My 5-Year Post-Graduation Plan');
+  var docDefs = [
+    {id:'resume', icon:'📄', title:'Professional Resume',                    inc:incResume},
+    {id:'cover',  icon:'✉️',  title:'Career Intent Cover Letter',            inc:incCover},
+    {id:'lor',    icon:'📝', title:'Letter of Recommendation Request Sheet', inc:incLor},
+    {id:'plan',   icon:'🗓️', title:'My 5-Year Post-Graduation Plan',         inc:incPlan},
+  ];
+
+  var anyDocs = docDefs.some(function(dd){return dd.inc && (generatedDocs[dd.id]);});
+  if(anyDocs) {
+    docDefs.forEach(function(dd, idx) {
+      if(!dd.inc) return;
+      var el = document.getElementById('doc-result-'+dd.id);
+      var content = el ? el.innerHTML : (generatedDocs[dd.id]||'');
+      if(!content) return;
+      // Extract just the doc body — strip outer wrapper and header chrome
+      var inner = content;
+      // Method 1: find doc-section-body opening tag and grab everything after it
+      var bodyTagIdx = content.indexOf('class="doc-section-body"');
+      if(bodyTagIdx >= 0) {
+        var bodyStart = content.indexOf('>', bodyTagIdx) + 1;
+        // Remove the outer closing </div></div> at the very end
+        var bodyEnd = content.lastIndexOf('</div>');
+        bodyEnd = content.lastIndexOf('</div>', bodyEnd - 1);
+        if(bodyStart > 0 && bodyEnd > bodyStart) {
+          inner = content.substring(bodyStart, bodyEnd);
+        }
+      }
+      // Strip any remaining doc-section-header blocks
+      inner = inner.replace(/<div class="doc-section-header"[\s\S]*?<\/div>/g, '');
+      // Strip print buttons and Opus badges 
+      inner = inner.replace(/<button[^>]*>🖨️[^<]*<\/button>/g, '');
+      inner = inner.replace(/<span[^>]*>✨[^<]*<\/span>/g, '');
+
+      html += '<div class="pf3-page">'
+        +secHeader('05'+(String.fromCharCode(97+idx)),dd.title,'linear-gradient(135deg,#0f1f3d 0%,#243d72 100%)');
+      html += '<div class="pf3-doc-body" style="padding:20px 0;">'+inner+'</div>';
+      html += '</div>'; // page
+    });
   } else {
-    html += '<div class="pf3-empty">Generate your transition documents in Step 5 to include them here.</div>';
-  }
-  html += '</div>'; // page
-
-  // ════════════════════════════════════════════
-  //  PAGE 7 — SUPPORTING DOCUMENTS (Tab 6)
-  // ════════════════════════════════════════════
-  var hasSup = (incSupLor && supportingFiles.lor.length) || (incSupAward && supportingFiles.award.length) || (incSupCert && supportingFiles.cert.length);
-  if(hasSup) {
     html += '<div class="pf3-page">'
-      +secHeader('06','Supporting Documents','linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)');
-    html += '<p class="pf3-section-intro">Letters of recommendation, awards, certificates, and completed training documentation supporting this portfolio.</p>';
-    if(incSupLor)   html += supGrid('lor','📨','Letters of Recommendation','#1e3a8a');
-    if(incSupAward) html += supGrid('award','🏆','Awards & Certificates','#c07810');
-    if(incSupCert)  html += supGrid('cert','📋','Trainings & Certifications','#2e7d52');
-    html += '</div>';
+      +secHeader('05','My Transition Documents','linear-gradient(135deg,#0f1f3d 0%,#243d72 100%)')
+      +'<div class="pf3-empty">Generate your transition documents in Step 5 to include them here.</div>'
+      +'</div>';
   }
 
   // ════════════════════════════════════════════
+  //  SUPPORTING DOCUMENTS — EACH CATEGORY ITS OWN PAGE
+  // ════════════════════════════════════════════
+  var supDefs = [
+    {cat:'lor',   icon:'📨', title:'Letters of Recommendation',  accent:'#1e3a8a', inc:incSupLor},
+    {cat:'award', icon:'🏆', title:'Awards & Certificates',       accent:'#c07810', inc:incSupAward},
+    {cat:'cert',  icon:'📋', title:'Trainings & Certifications',  accent:'#2e7d52', inc:incSupCert},
+  ];
+
+  supDefs.forEach(function(sd, idx) {
+    if(!sd.inc) return;
+    var files = supportingFiles[sd.cat].filter(Boolean);
+    if(!files.length) return;
+    html += '<div class="pf3-page">'
+      +secHeader('06'+(String.fromCharCode(97+idx)),sd.title,'linear-gradient(135deg,'+sd.accent+' 0%,'+sd.accent+'cc 100%)');
+    html += '<div class="pf3-sup-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:20px;">';
+    files.forEach(function(f){
+      var media = f.isImage
+        ? '<img src="'+f.dataUrl+'" style="width:100%;height:180px;object-fit:contain;border-radius:6px;display:block;" alt="'+esc(f.name)+'">'
+        : '<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:3rem;">📄</div>';
+      html += '<div style="background:#fff;border-radius:10px;border:1px solid #dde3f0;overflow:hidden;border-top:4px solid '+sd.accent+';">'
+        +media
+        +'<div style="padding:10px 12px;font-size:.82rem;font-weight:600;color:#0f1f3d;">'+esc(f.name.replace(/\.[^.]+$/,''))+'</div>'
+        +'</div>';
+    });
+    html += '</div>';
+    html += '</div>'; // page
+  });
+
+    // ════════════════════════════════════════════
   //  BACK COVER
   // ════════════════════════════════════════════
   html += '<div class="pf3-back">'
@@ -4449,90 +4536,52 @@ function getApiKey() { return true; } // key held server-side by Vercel
 
 var SAVE_KEY = 'transitionready_v3';
 
-function saveProgress() {
+function saveProgress(silent) {
   try {
-    var data = {
-      // Tab 1 — Profile
-      fields: {},
-      // Pathways
-      pathways: {},
-      pathwayDetails: {},
-      // Tab 2 — Discovery + careers
-      discState: discState,
-      careers: {},
-      personal: {},
-      // Tab 3 — Work samples metadata (not files — too large)
-      samples: {},
-      // Tab 4 — Resources
-      resources: {},
-      // Tab 5 — Generated docs text
-      generatedDocs: {},
-      // Tab 6 — Cert names
-      certNames: v('cert-names-all'),
-      theme: currentTheme,
-      template: currentTemplate,
-      // Photo (base64 — stored if present)
-      photo: studentPhoto || null,
-      savedAt: new Date().toISOString()
-    };
+    // buildSaveData() is the single source of truth for snapshotting state
+    var data = (typeof buildSaveData === 'function') ? buildSaveData() : null;
+    if(!data) {
+      // Fallback if buildSaveData isn't defined yet (early boot); skip silently
+      return;
+    }
 
-    // Profile fields
-    ['s-first','s-last','s-phone','s-email','s-address','s-dob','s-grad','s-school','s-cm','s-region','s-gpa'].forEach(function(id) {
-      data.fields[id] = v(id);
-    });
-
-    // Pathways
-    ['pw1','pw2','pw3','pw4','pw5','pw6','pw7','pw8'].forEach(function(id) {
-      var el = document.getElementById(id);
-      data.pathways[id] = el ? el.checked : false;
-    });
-    ['pd-pw1-q','pd-pw2-q1','pd-pw2-q2','pd-pw3-q','pd-pw4-q1','pd-pw4-q2','pd-pw5-q','pd-pw6-q','pd-pw7-q','pd-pw8-q'].forEach(function(id) {
-      data.pathwayDetails[id] = v(id);
-    });
-
-    // Careers & personal
-    ['c1-title','c1-cluster','c1-why','c2-title','c2-cluster','c2-why','c3-title','c3-cluster','c3-why'].forEach(function(id) {
-      data.careers[id] = v(id);
-    });
-    ['q-strengths','q-environment','q-voice'].forEach(function(id) {
-      data.personal[id] = v(id);
-    });
-
-    // Work sample metadata
-    ['um1-title','um1-class','um1-skills','um2-title','um2-class','um2-thesis','um3-title','um3-class','um3-proud','um3-skills'].forEach(function(id) {
-      data.samples[id] = v(id);
-    });
-
-    // Resources
-    ['r-alta','r-jobcorps','r-ccc','r-losrios','r-dor','r-workability'].forEach(function(id) {
-      var el = document.getElementById(id);
-      data.resources[id] = el ? el.checked : false;
-    });
-    data.resources['r-notes'] = v('r-notes');
-
-    // Generated doc text (strip HTML for storage efficiency)
-    ['resume','cover','lor','plan'].forEach(function(id) {
-      if(generatedDocs[id]) data.generatedDocs[id] = generatedDocs[id];
-    });
-
-    // Discovery detail text
-    data.discDetails = {};
-    Object.keys(DISC_DATA).forEach(function(cat) {
-      DISC_DATA[cat].forEach(function(item, i) {
-        var el = document.getElementById('di-'+cat+'-'+i+'-det');
-        if(el && el.value) data.discDetails[cat+'-'+i] = el.value;
-      });
-    });
-
+    // Always persist FULL data (including photo) to localStorage
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+
     var now = new Date();
     var el = document.getElementById('save-status');
     if(el) el.textContent = 'Saved · ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    showSaveToast('✅ Progress saved');
+    if(!silent) showSaveToast('✅ Progress saved');
+
+    // Push to cloud if logged in — but strip heavy blobs first so Supabase doesn't reject
+    if(_currentUser && typeof saveToCloud === 'function') {
+      try {
+        var cloudPayload = buildCloudPayload(data);
+        saveToCloud(_currentUser.id, cloudPayload);
+      } catch(cloudErr) {
+        console.warn('Cloud push failed (local save still succeeded):', cloudErr);
+      }
+    }
   } catch(e) {
     console.warn('Save failed:', e);
-    showSaveToast('⚠️ Could not save — browser storage may be full');
+    if(!silent) showSaveToast('⚠️ Could not save — browser storage may be full');
   }
+}
+
+// ──────────────────────────────────────────────────────────────
+// buildCloudPayload — strips photo + generated HTML before upload
+// Photo base64 can be 1–3 MB per student; generated doc HTML can be
+// another 100 KB. Neither belongs in Supabase rows — localStorage keeps
+// a local copy, and docs can always be regenerated.
+// ──────────────────────────────────────────────────────────────
+function buildCloudPayload(fullData) {
+  var clone = JSON.parse(JSON.stringify(fullData));
+  if(clone.photo) delete clone.photo;
+  if(clone.generatedDocs) {
+    clone._generatedDocKeys = Object.keys(clone.generatedDocs);
+    delete clone.generatedDocs;
+  }
+  return clone;
 }
 
 function restoreProgress() {
@@ -4762,10 +4811,18 @@ function updateAllProgress() {
   }
 }
 
+var _saveDebounceTimer = null;
+function scheduleAutoSave() {
+  if(_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
+  _saveDebounceTimer = setTimeout(function() { saveProgress(true); }, 1500);
+}
+
 function hookProgressListeners() {
   document.querySelectorAll('input, textarea, select').forEach(function(el) {
-    el.addEventListener('change', updateAllProgress);
-    if(el.tagName !== 'SELECT') el.addEventListener('input', updateAllProgress);
+    el.addEventListener('change', function() { updateAllProgress(); scheduleAutoSave(); });
+    if(el.tagName !== 'SELECT') {
+      el.addEventListener('input', function() { updateAllProgress(); scheduleAutoSave(); });
+    }
   });
 }
 
@@ -4932,16 +4989,13 @@ async function loadCloudData(userId) {
 
 // Override saveProgress to also push to cloud
 var _origSaveProgress = null;
+var _cloudSyncInitialized = false;
 function initCloudSync() {
-  _origSaveProgress = saveProgress;
-  saveProgress = function() {
-    _origSaveProgress();
-    if(_currentUser) {
-      // Build save data and push to cloud
-      var data = buildSaveData();
-      saveToCloud(_currentUser.id, data);
-    }
-  };
+  // Guard against re-wrapping on repeated SIGNED_IN events (token refresh).
+  // saveProgress() now handles cloud push internally via _currentUser check,
+  // so this function no longer needs to wrap anything.
+  if(_cloudSyncInitialized) return;
+  _cloudSyncInitialized = true;
 }
 
 function buildSaveData() {
@@ -5244,4 +5298,11 @@ function bootAuth() {
       <p>TransitionReady is prepared to enter into a DPA with any LEA as required by AB 1584. We support the CSDPA template and the Student Data Privacy Consortium's National DPA template.</p>
 
       <h2 style="font-size:17px; margin:28px 0 8px;">18. Contact Information</h2>
-      <p><strong>Sure Step Education</strong><br>Nicholas Crabtree, Co-Founder<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__"
+      <p><strong>Sure Step Education</strong><br>Nicholas Crabtree, Co-Founder<br>Email: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2846414b404744495b685b5d5a4d5b5c4d584d4c5d4b495c414746064b4745">[email&#160;protected]</a></p>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
