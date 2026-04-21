@@ -5148,13 +5148,11 @@ async function loadMyCaseManager() {
       return;
     }
 
-    // Active assignment — look up staff name
-    var roleRes = await sb.from('user_roles')
-      .select('full_name,email')
-      .eq('user_id', assignRes.data.staff_user_id)
-      .maybeSingle();
+    // Active assignment — look up staff name via secure RPC
+    var roleRes = await sb.rpc('get_staff_display', { p_user_id: assignRes.data.staff_user_id });
+    var roleRow = (roleRes.data && roleRes.data.length > 0) ? roleRes.data[0] : null;
 
-    var name = (roleRes.data && (roleRes.data.full_name || roleRes.data.email)) || 'your case manager';
+    var name = (roleRow && (roleRow.full_name || roleRow.email)) || 'your case manager';
     var date = new Date(assignRes.data.assigned_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     var roleLabel = assignRes.data.staff_role === 'admin' ? 'Admin' : 'Case Manager';
 
@@ -5202,14 +5200,19 @@ async function connectCaseManager() {
   if(!sb) return;
 
   try {
-    // Look up the staff user by email in user_roles
-    var staffRes = await sb.from('user_roles')
-      .select('user_id,role,full_name')
-      .ilike('email', email)
-      .in('role', ['case_manager','admin'])
-      .maybeSingle();
+    // Look up staff via secure RPC function (bypasses student RLS restrictions
+    // but only returns user_id/role/name, never any other user data)
+    var staffRes = await sb.rpc('lookup_staff_by_email', { p_email: email });
+    var staffRow = (staffRes.data && staffRes.data.length > 0) ? staffRes.data[0] : null;
 
-    if(!staffRes.data) {
+    if(staffRes.error) {
+      console.warn('Staff lookup RPC failed:', staffRes.error);
+      msgEl.textContent = '⚠️ Lookup failed: ' + staffRes.error.message;
+      msgEl.style.color = 'var(--red)';
+      return;
+    }
+
+    if(!staffRow) {
       msgEl.innerHTML = '⚠️ No case manager account found with that email. <br><span style="font-size:.75rem;color:var(--slate);">Your teacher needs to sign in to TransitionReady at least once before you can connect.</span>';
       msgEl.style.color = 'var(--red)';
       return;
@@ -5217,9 +5220,9 @@ async function connectCaseManager() {
 
     // Create the assignment (RLS policy allows student to insert their own row)
     var insertRes = await sb.from('caseload_assignments').insert({
-      staff_user_id:   staffRes.data.user_id,
+      staff_user_id:   staffRow.user_id,
       student_user_id: _currentUser.id,
-      staff_role:      staffRes.data.role,
+      staff_role:      staffRow.role,
       status:          'active',
       consent_shown_at: new Date().toISOString()
     });
