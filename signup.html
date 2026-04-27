@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Your Account — TransitionReady</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:       #1a7f6e;
+      --teal-light: #e8f5f2;
+      --teal-dark:  #0f5447;
+      --ink:        #1a1f2e;
+      --ink-soft:   #4a5368;
+      --ink-faint:  #8a91a3;
+      --border:     #d8dde8;
+      --bg:         #f6f8fb;
+      --white:      #ffffff;
+      --error:      #c0392b;
+      --error-bg:   #fdf0ee;
+      --success:    #1a7f6e;
+      --success-bg: #e8f5f2;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+    }
+
+    /* Layout */
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Left panel */
+    .panel-left {
+      background: var(--teal-dark);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .panel-left::after {
+      content: '';
+      position: absolute;
+      bottom: -80px;
+      left: -80px;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .brand {
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-by {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 4px;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .panel-left-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-left-content h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.6rem;
+      color: #ffffff;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-left-content h1 em {
+      font-style: italic;
+      color: rgba(255,255,255,0.65);
+    }
+
+    .panel-left-content p {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.7;
+      max-width: 340px;
+      font-weight: 300;
+    }
+
+    .features {
+      list-style: none;
+      margin-top: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .features li {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.875rem;
+      color: rgba(255,255,255,0.75);
+      font-weight: 400;
+    }
+
+    .features li::before {
+      content: '';
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.8)' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .panel-left-footer {
+      position: relative;
+      z-index: 1;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+      line-height: 1.6;
+    }
+
+    /* Right panel */
+    .panel-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* States */
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Loading state */
+    #state-loading {
+      text-align: center;
+      padding: 3rem 0;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #state-loading p {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    /* Invalid state */
+    #state-invalid {
+      text-align: center;
+      padding: 2rem 0;
+    }
+
+    .state-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      font-size: 1.5rem;
+    }
+
+    .state-icon.error { background: var(--error-bg); }
+    .state-icon.success { background: var(--success-bg); }
+
+    /* Form state */
+    .form-header {
+      margin-bottom: 2rem;
+    }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--teal-light);
+      color: var(--teal-dark);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1rem;
+    }
+
+    .form-header h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-header p {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    /* Form fields */
+    .field {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.02em;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      color: var(--ink);
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(26,127,110,0.12);
+    }
+
+    input::placeholder { color: var(--ink-faint); }
+
+    .field-hint {
+      font-size: 0.78rem;
+      color: var(--ink-faint);
+      margin-top: 0.35rem;
+    }
+
+    /* Password toggle */
+    .password-wrap {
+      position: relative;
+    }
+
+    .password-wrap input {
+      padding-right: 3rem;
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--ink-faint);
+      padding: 4px;
+      font-size: 0.85rem;
+    }
+
+    .toggle-pw:hover { color: var(--ink-soft); }
+
+    /* Alert */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 1.25rem;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .alert.error { background: var(--error-bg); color: var(--error); border: 1px solid rgba(192,57,43,0.2); }
+    .alert.info  { background: var(--teal-light); color: var(--teal-dark); border: 1px solid rgba(26,127,110,0.2); }
+    .alert.show  { display: block; }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      padding: 0.85rem;
+      background: var(--teal);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) { background: var(--teal-dark); }
+    .btn-submit:active:not(:disabled) { transform: scale(0.99); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .btn-submit.loading .btn-spinner { display: block; }
+    .btn-submit.loading .btn-text { opacity: 0.7; }
+
+    /* Success state */
+    #state-success {
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    #state-success h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.8rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    #state-success p {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .login-link {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+
+    .login-link a {
+      color: var(--teal);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .login-link a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .page { grid-template-columns: 1fr; }
+      .panel-left { display: none; }
+      .panel-right { padding: 2rem 1.5rem; align-items: flex-start; padding-top: 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <!-- Left panel -->
+  <div class="panel-left">
+    <div class="brand">
+      <div class="brand-name">TransitionReady</div>
+      <div class="brand-by">by Sure Step Education</div>
+    </div>
+
+    <div class="panel-left-content">
+      <h1>Your future starts <em>here.</em></h1>
+      <p>Build a professional portfolio that showcases who you are, what you can do, and where you're headed.</p>
+      <ul class="features">
+        <li>Resume and cover letter builder</li>
+        <li>Work samples and achievements</li>
+        <li>Career discovery tools</li>
+        <li>Portfolio export for employers</li>
+      </ul>
+    </div>
+
+    <div class="panel-left-footer">
+      Protected by FERPA &nbsp;·&nbsp; Sure Step Education &nbsp;·&nbsp; <a href="/privacy.html" style="color:inherit">Privacy Policy</a>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="panel-right">
+    <div class="form-container">
+
+      <!-- Loading -->
+      <div id="state-loading" class="state active">
+        <div class="spinner"></div>
+        <p>Verifying your invite link…</p>
+      </div>
+
+      <!-- Invalid token -->
+      <div id="state-invalid" class="state">
+        <div class="state-icon error">⚠️</div>
+        <h2 style="font-family:'DM Serif Display',serif;font-size:1.6rem;margin-bottom:0.5rem">Link unavailable</h2>
+        <p style="color:var(--ink-soft);font-size:0.9rem;line-height:1.7;max-width:300px;margin:0 auto 1.5rem" id="invalid-message">This invite link is no longer valid.</p>
+        <p style="font-size:0.85rem;color:var(--ink-faint)">Please contact your case manager or school for a new invite link.</p>
+      </div>
+
+      <!-- Signup form -->
+      <div id="state-form" class="state">
+        <div class="form-header">
+          <div class="role-badge" id="role-badge">🎓 Student</div>
+          <h2>Create your account</h2>
+          <p id="form-subtitle">Enter your details to get started with TransitionReady.</p>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="field">
+          <label for="full-name">Full name</label>
+          <input type="text" id="full-name" placeholder="Your full name" autocomplete="name" />
+        </div>
+
+        <div class="field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+          <div class="field-hint" id="email-hint"></div>
+        </div>
+
+        <div class="field" id="password-field" style="display:none">
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" />
+            <button class="toggle-pw" type="button" onclick="togglePassword()" aria-label="Show password">👁</button>
+          </div>
+        </div>
+
+        <button class="btn-submit" id="submit-btn" onclick="handleSubmit()">
+          <div class="btn-spinner"></div>
+          <span class="btn-text">Create account</span>
+        </button>
+
+        <hr class="divider" />
+        <div class="login-link">Already have an account? <a href="/login.html">Sign in</a></div>
+      </div>
+
+      <!-- Success -->
+      <div id="state-success" class="state">
+        <div class="state-icon success">✉️</div>
+        <h2>Check your email</h2>
+        <p id="success-message">We've sent a sign-in link to your email address. Click it to access your portfolio.</p>
+        <hr class="divider" style="margin-top:2rem" />
+        <p style="font-size:0.8rem;color:var(--ink-faint);line-height:1.6">Didn't get it? Check your spam folder, or contact your case manager.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==========================================================================
+  // Config
+  // ==========================================================================
+  const SUPABASE_URL    = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
+  const SUPABASE_ANON   = 'REPLACE_WITH_ANON_KEY'; // ← paste your anon key here
+  const EDGE_FUNCTION   = `${SUPABASE_URL}/functions/v1/consume-invite`;
+
+  // ==========================================================================
+  // State
+  // ==========================================================================
+  let inviteData = null; // { role, school_id, district_id } from validated token
+  let inviteToken = null;
+
+  // ==========================================================================
+  // Init — validate token on page load
+  // ==========================================================================
+  document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    inviteToken  = params.get('token');
+
+    if (!inviteToken) {
+      showState('invalid');
+      document.getElementById('invalid-message').textContent =
+        'No invite token found in this link.';
+      return;
+    }
+
+    try {
+      // Validate token against Supabase (anon read — see RLS policy)
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/invites?token=eq.${inviteToken}&select=id,role,school_id,district_id,used_at,expires_at`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON,
+            'Authorization': `Bearer ${SUPABASE_ANON}`,
+          }
+        }
+      );
+
+      const rows = await res.json();
+
+      if (!rows || rows.length === 0) {
+        showInvalid('This invite link was not found. Please request a new one.');
+        return;
+      }
+
+      const invite = rows[0];
+
+      if (invite.used_at) {
+        showInvalid('This invite link has already been used.');
+        return;
+      }
+
+      if (new Date(invite.expires_at) < new Date()) {
+        showInvalid('This invite link has expired. Please contact your case manager for a new one.');
+        return;
+      }
+
+      // Valid — store and show form
+      inviteData = invite;
+      configureFormForRole(invite.role);
+      showState('form');
+
+    } catch (err) {
+      console.error('Token validation error:', err);
+      showInvalid('Unable to verify your invite link. Please try again.');
+    }
+  });
+
+  // ==========================================================================
+  // Configure form based on role
+  // ==========================================================================
+  function configureFormForRole(role) {
+    const badge    = document.getElementById('role-badge');
+    const subtitle = document.getElementById('form-subtitle');
+    const emailHint = document.getElementById('email-hint');
+    const pwField  = document.getElementById('password-field');
+
+    if (role === 'student') {
+      badge.textContent      = '🎓 Student';
+      subtitle.textContent   = 'Enter your details below. We\'ll email you a sign-in link — no password needed.';
+      emailHint.textContent  = 'Use an email you can access. We\'ll send your sign-in link here.';
+      pwField.style.display  = 'none';
+    } else if (role === 'case_manager') {
+      badge.textContent      = '📋 Case Manager';
+      subtitle.textContent   = 'Create your TransitionReady staff account.';
+      emailHint.textContent  = 'Use your school or district email address.';
+      pwField.style.display  = 'block';
+    } else if (role === 'district_admin') {
+      badge.textContent      = '🏫 District Administrator';
+      subtitle.textContent   = 'Create your TransitionReady district admin account.';
+      emailHint.textContent  = 'Use your district email address.';
+      pwField.style.display  = 'block';
+    } else if (role === 'director') {
+      badge.textContent      = '⭐ Sure Step Director';
+      subtitle.textContent   = 'Create your director account.';
+      emailHint.textContent  = '';
+      pwField.style.display  = 'block';
+    }
+  }
+
+  // ==========================================================================
+  // Form submission
+  // ==========================================================================
+  async function handleSubmit() {
+    clearAlert();
+
+    const fullName = document.getElementById('full-name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const isStudent = inviteData.role === 'student';
+
+    // Validate
+    if (!fullName) { showAlert('Please enter your full name.', 'error'); return; }
+    if (!email || !email.includes('@')) { showAlert('Please enter a valid email address.', 'error'); return; }
+    if (!isStudent && password.length < 8) { showAlert('Password must be at least 8 characters.', 'error'); return; }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        token:     inviteToken,
+        full_name: fullName,
+        email:     email,
+      };
+      if (!isStudent) payload.password = password;
+
+      const res = await fetch(EDGE_FUNCTION, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        showAlert(data.error || 'Something went wrong. Please try again.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // Success
+      if (isStudent) {
+        document.getElementById('success-message').textContent =
+          `We've sent a sign-in link to ${email}. Click it to access your portfolio.`;
+        showState('success');
+      } else {
+        // Staff — redirect to login
+        window.location.href = `/login.html?created=1`;
+      }
+
+    } catch (err) {
+      console.error('Signup error:', err);
+      showAlert('Network error. Please check your connection and try again.', 'error');
+      setLoading(false);
+    }
+  }
+
+  // ==========================================================================
+  // UI helpers
+  // ==========================================================================
+  function showState(id) {
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    document.getElementById(`state-${id}`).classList.add('active');
+  }
+
+  function showInvalid(message) {
+    document.getElementById('invalid-message').textContent = message;
+    showState('invalid');
+  }
+
+  function showAlert(message, type) {
+    const el = document.getElementById('alert');
+    el.textContent = message;
+    el.className = `alert ${type} show`;
+  }
+
+  function clearAlert() {
+    const el = document.getElementById('alert');
+    el.className = 'alert';
+    el.textContent = '';
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('submit-btn');
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  function togglePassword() {
+    const input = document.getElementById('password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('state-form').classList.contains('active')) {
+      handleSubmit();
+    }
+  });
+</script>
+</body>
+</html>
