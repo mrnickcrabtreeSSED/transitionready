@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — TransitionReady</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:       #1a7f6e;
+      --teal-light: #e8f5f2;
+      --teal-dark:  #0f5447;
+      --ink:        #1a1f2e;
+      --ink-soft:   #4a5368;
+      --ink-faint:  #8a91a3;
+      --border:     #d8dde8;
+      --bg:         #f6f8fb;
+      --white:      #ffffff;
+      --error:      #c0392b;
+      --error-bg:   #fdf0ee;
+      --success:    #1a7f6e;
+      --success-bg: #e8f5f2;
+    }
+
+    html, body { min-height: 100vh; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--ink); }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Left panel */
+    .panel-left {
+      background: var(--teal-dark);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -120px;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .panel-left::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .brand { position: relative; z-index: 1; }
+    .brand-name { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: #fff; letter-spacing: -0.02em; }
+    .brand-by { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 4px; font-weight: 300; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    .panel-left-content { position: relative; z-index: 1; }
+    .panel-left-content h1 { font-family: 'DM Serif Display', serif; font-size: 2.6rem; color: #fff; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1.25rem; }
+    .panel-left-content h1 em { font-style: italic; color: rgba(255,255,255,0.65); }
+    .panel-left-content p { font-size: 0.95rem; color: rgba(255,255,255,0.65); line-height: 1.7; max-width: 340px; font-weight: 300; }
+
+    .panel-left-footer { position: relative; z-index: 1; font-size: 0.75rem; color: rgba(255,255,255,0.35); line-height: 1.6; }
+
+    /* Right panel */
+    .panel-right { display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+    .form-container { width: 100%; max-width: 420px; }
+
+    .state { display: none; }
+    .state.active { display: block; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.65rem 1rem;
+      background: var(--white);
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab:first-child { border-right: 1.5px solid var(--border); }
+    .tab.active { background: var(--teal-dark); color: #fff; }
+    .tab:hover:not(.active) { background: var(--teal-light); color: var(--teal-dark); }
+
+    .form-header { margin-bottom: 1.75rem; }
+    .form-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.9rem; letter-spacing: -0.02em; color: var(--ink); margin-bottom: 0.5rem; }
+    .form-header p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.6; }
+
+    .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1.25rem; display: none; line-height: 1.5; }
+    .alert.error   { background: var(--error-bg); color: var(--error); border: 1px solid rgba(192,57,43,0.2); }
+    .alert.success { background: var(--success-bg); color: var(--teal-dark); border: 1px solid rgba(26,127,110,0.2); }
+    .alert.show    { display: block; }
+
+    .field { margin-bottom: 1.25rem; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--ink); margin-bottom: 0.4rem; letter-spacing: 0.02em; }
+    input { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--ink); background: var(--white); transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
+    input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,127,110,0.12); }
+    input::placeholder { color: var(--ink-faint); }
+
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 3rem; }
+    .toggle-pw { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--ink-faint); padding: 4px; font-size: 0.85rem; }
+    .toggle-pw:hover { color: var(--ink-soft); }
+
+    .forgot-link { display: block; text-align: right; font-size: 0.8rem; color: var(--teal); text-decoration: none; margin-top: -0.75rem; margin-bottom: 1.25rem; }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .btn-submit { width: 100%; padding: 0.85rem; background: var(--teal); color: #fff; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-submit:hover:not(:disabled) { background: var(--teal-dark); }
+    .btn-submit:active:not(:disabled) { transform: scale(0.99); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .btn-submit.loading .btn-spinner { display: block; }
+    .btn-submit.loading .btn-text { opacity: 0.7; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    .signup-link { text-align: center; font-size: 0.85rem; color: var(--ink-soft); }
+    .signup-link a { color: var(--teal); text-decoration: none; font-weight: 500; }
+    .signup-link a:hover { text-decoration: underline; }
+
+    /* Created banner */
+    .created-banner { background: var(--success-bg); color: var(--teal-dark); border: 1px solid rgba(26,127,110,0.2); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.875rem; margin-bottom: 1.5rem; display: none; }
+    .created-banner.show { display: block; }
+
+    /* Magic link sent state */
+    #state-magic { text-align: center; padding: 1rem 0; }
+    .state-icon { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.5rem; background: var(--success-bg); }
+    #state-magic h2 { font-family: 'DM Serif Display', serif; font-size: 1.8rem; letter-spacing: -0.02em; margin-bottom: 0.75rem; }
+    #state-magic p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.7; max-width: 320px; margin: 0 auto; }
+
+    .btn-ghost { width: 100%; padding: 0.75rem; background: none; border: 1.5px solid var(--border); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 500; color: var(--ink-soft); cursor: pointer; margin-top: 1.5rem; transition: border-color 0.15s, color 0.15s; }
+    .btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+
+    @media (max-width: 768px) {
+      .page { grid-template-columns: 1fr; }
+      .panel-left { display: none; }
+      .panel-right { padding: 2rem 1.5rem; align-items: flex-start; padding-top: 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <div class="panel-left">
+    <div class="brand">
+      <div class="brand-name">TransitionReady</div>
+      <div class="brand-by">by Sure Step Education</div>
+    </div>
+    <div class="panel-left-content">
+      <h1>Welcome <em>back.</em></h1>
+      <p>Sign in to continue building your portfolio and preparing for your next chapter.</p>
+    </div>
+    <div class="panel-left-footer">
+      Protected by FERPA &nbsp;·&nbsp; Sure Step Education &nbsp;·&nbsp; <a href="/privacy.html" style="color:inherit">Privacy Policy</a>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="form-container">
+
+      <!-- Created success banner -->
+      <div class="created-banner" id="created-banner">
+        ✓ Account created successfully. Sign in below.
+      </div>
+
+      <!-- Login form -->
+      <div id="state-form" class="state active">
+
+        <!-- Role tabs -->
+        <div class="tabs">
+          <button class="tab active" id="tab-student" onclick="switchTab('student')">Student</button>
+          <button class="tab" id="tab-staff" onclick="switchTab('staff')">Staff / Admin</button>
+        </div>
+
+        <!-- Student: magic link -->
+        <div id="form-student">
+          <div class="form-header">
+            <h2>Sign in</h2>
+            <p>Enter your email and we'll send you a sign-in link.</p>
+          </div>
+          <div id="alert-student" class="alert"></div>
+          <div class="field">
+            <label for="student-email">Email address</label>
+            <input type="email" id="student-email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <button class="btn-submit" id="btn-student" onclick="handleStudentLogin()">
+            <div class="btn-spinner"></div>
+            <span class="btn-text">Send sign-in link</span>
+          </button>
+        </div>
+
+        <!-- Staff: email + password -->
+        <div id="form-staff" style="display:none">
+          <div class="form-header">
+            <h2>Staff sign in</h2>
+            <p>Sign in with your school or district email.</p>
+          </div>
+          <div id="alert-staff" class="alert"></div>
+          <div class="field">
+            <label for="staff-email">Email address</label>
+            <input type="email" id="staff-email" placeholder="you@district.edu" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="staff-password">Password</label>
+            <div class="password-wrap">
+              <input type="password" id="staff-password" placeholder="Your password" autocomplete="current-password" />
+              <button class="toggle-pw" type="button" onclick="togglePassword()" aria-label="Show password">👁</button>
+            </div>
+          </div>
+          <button class="btn-submit" id="btn-staff" onclick="handleStaffLogin()">
+            <div class="btn-spinner"></div>
+            <span class="btn-text">Sign in</span>
+          </button>
+        </div>
+
+        <hr class="divider" />
+        <div class="signup-link">Need an account? Contact your case manager or administrator for an invite link.</div>
+      </div>
+
+      <!-- Magic link sent -->
+      <div id="state-magic" class="state">
+        <div class="state-icon">✉️</div>
+        <h2>Check your email</h2>
+        <p id="magic-message">We've sent a sign-in link. Click it to access your portfolio.</p>
+        <button class="btn-ghost" onclick="showState('form')">← Try a different email</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==========================================================================
+  // Config — replace with your actual anon key
+  // ==========================================================================
+  const SUPABASE_URL  = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
+  const SUPABASE_ANON = 'REPLACE_WITH_ANON_KEY';
+
+  // ==========================================================================
+  // Init
+  // ==========================================================================
+  document.addEventListener('DOMContentLoaded', () => {
+    // Show "account created" banner if redirected from signup
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('created') === '1') {
+      document.getElementById('created-banner').classList.add('show');
+    }
+  });
+
+  // ==========================================================================
+  // Tab switching
+  // ==========================================================================
+  function switchTab(role) {
+    document.getElementById('tab-student').classList.toggle('active', role === 'student');
+    document.getElementById('tab-staff').classList.toggle('active', role === 'staff');
+    document.getElementById('form-student').style.display = role === 'student' ? 'block' : 'none';
+    document.getElementById('form-staff').style.display   = role === 'staff'   ? 'block' : 'none';
+    clearAlerts();
+  }
+
+  // ==========================================================================
+  // Student: magic link login
+  // ==========================================================================
+  async function handleStudentLogin() {
+    clearAlerts();
+    const email = document.getElementById('student-email').value.trim();
+    if (!email || !email.includes('@')) {
+      showAlert('student', 'Please enter a valid email address.', 'error');
+      return;
+    }
+
+    setLoading('student', true);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON,
+        },
+        body: JSON.stringify({
+          email,
+          options: { emailRedirectTo: `${window.location.origin}/login/confirm.html` }
+        }),
+      });
+
+      // Supabase returns 200 even for unknown emails (security best practice)
+      document.getElementById('magic-message').textContent =
+        `If ${email} has an account, you'll receive a sign-in link shortly.`;
+      showState('magic');
+
+    } catch (err) {
+      console.error('Magic link error:', err);
+      showAlert('student', 'Something went wrong. Please try again.', 'error');
+      setLoading('student', false);
+    }
+  }
+
+  // ==========================================================================
+  // Staff: email + password login
+  // ==========================================================================
+  async function handleStaffLogin() {
+    clearAlerts();
+    const email    = document.getElementById('staff-email').value.trim();
+    const password = document.getElementById('staff-password').value;
+
+    if (!email || !email.includes('@')) {
+      showAlert('staff', 'Please enter a valid email address.', 'error');
+      return;
+    }
+    if (!password) {
+      showAlert('staff', 'Please enter your password.', 'error');
+      return;
+    }
+
+    setLoading('staff', true);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON,
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        showAlert('staff', 'Incorrect email or password. Please try again.', 'error');
+        setLoading('staff', false);
+        return;
+      }
+
+      // Store session and redirect to app
+      sessionStorage.setItem('tr_session', JSON.stringify(data));
+      window.location.href = '/app.html';
+
+    } catch (err) {
+      console.error('Staff login error:', err);
+      showAlert('staff', 'Network error. Please check your connection.', 'error');
+      setLoading('staff', false);
+    }
+  }
+
+  // ==========================================================================
+  // UI helpers
+  // ==========================================================================
+  function showState(id) {
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    document.getElementById(`state-${id}`).classList.add('active');
+  }
+
+  function showAlert(form, message, type) {
+    const el = document.getElementById(`alert-${form}`);
+    el.textContent = message;
+    el.className = `alert ${type} show`;
+  }
+
+  function clearAlerts() {
+    document.querySelectorAll('.alert').forEach(el => { el.className = 'alert'; el.textContent = ''; });
+  }
+
+  function setLoading(form, on) {
+    const btn = document.getElementById(`btn-${form}`);
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  function togglePassword() {
+    const input = document.getElementById('staff-password');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const activeTab = document.getElementById('tab-student').classList.contains('active') ? 'student' : 'staff';
+      activeTab === 'student' ? handleStudentLogin() : handleStaffLogin();
+    }
+  });
+</script>
+</body>
+</html>
