@@ -8,6 +8,9 @@
   },
   "routes": [
     { "src": "/api/claude", "dest": "/api/claude.js" },
+    { "src": "/signup.html", "dest": "/signup.html" },
+    { "src": "/login.html", "dest": "/login.html" },
+    { "src": "/confirm.html", "dest": "/confirm.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
