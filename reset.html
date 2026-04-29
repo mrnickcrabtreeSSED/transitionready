@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Password — TransitionReady</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --teal:       #1a7f6e;
+      --teal-light: #e8f5f2;
+      --teal-dark:  #0f5447;
+      --ink:        #1a1f2e;
+      --ink-soft:   #4a5368;
+      --ink-faint:  #8a91a3;
+      --border:     #d8dde8;
+      --bg:         #f6f8fb;
+      --white:      #ffffff;
+      --error:      #c0392b;
+      --error-bg:   #fdf0ee;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    }
+
+    .brand {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.3rem;
+      color: var(--teal-dark);
+      margin-bottom: 2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .state { display: none; }
+    .state.active { display: block; }
+
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1.25rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.7rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    p { font-size: .9rem; color: var(--ink-soft); line-height: 1.7; margin-bottom: 1.5rem; }
+
+    .field { margin-bottom: 1.25rem; }
+    label { display: block; font-size: .8rem; font-weight: 600; color: var(--ink); margin-bottom: .4rem; letter-spacing: .02em; }
+
+    input {
+      width: 100%;
+      padding: .75rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .95rem;
+      color: var(--ink);
+      background: var(--white);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,127,110,.12); }
+
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 3rem; }
+    .toggle-pw {
+      position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: .85rem; padding: 4px;
+    }
+
+    .alert {
+      padding: .75rem 1rem; border-radius: 8px; font-size: .875rem;
+      margin-bottom: 1.25rem; display: none; line-height: 1.5;
+    }
+    .alert.error   { background: var(--error-bg); color: var(--error); border: 1px solid rgba(192,57,43,.2); }
+    .alert.success { background: var(--teal-light); color: var(--teal-dark); border: 1px solid rgba(26,127,110,.2); }
+    .alert.show    { display: block; }
+
+    .btn {
+      width: 100%; padding: .85rem;
+      background: var(--teal); color: #fff;
+      border: none; border-radius: 8px;
+      font-family: 'DM Sans', sans-serif; font-size: .95rem; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:hover:not(:disabled) { background: var(--teal-dark); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .btn-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn.loading .btn-spinner { display: block; }
+    .btn.loading .btn-text { opacity: .7; }
+
+    .back-link { display: block; text-align: center; margin-top: 1.25rem; font-size: .85rem; color: var(--ink-faint); }
+    .back-link a { color: var(--teal); text-decoration: none; font-weight: 500; }
+    .back-link a:hover { text-decoration: underline; }
+
+    .success-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--teal-light);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem; font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">TransitionReady</div>
+
+  <!-- Loading -->
+  <div id="state-loading" class="state active">
+    <div class="spinner"></div>
+    <p style="text-align:center;margin:0;">Verifying reset link…</p>
+  </div>
+
+  <!-- Set new password form -->
+  <div id="state-form" class="state">
+    <h2>Set new password</h2>
+    <p>Choose a strong password for your account.</p>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="field">
+      <label for="password">New password</label>
+      <div class="password-wrap">
+        <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" />
+        <button class="toggle-pw" type="button" onclick="togglePw('password')" aria-label="Show password">👁</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="confirm-password">Confirm password</label>
+      <div class="password-wrap">
+        <input type="password" id="confirm-password" placeholder="Repeat your password" autocomplete="new-password" />
+        <button class="toggle-pw" type="button" onclick="togglePw('confirm-password')" aria-label="Show password">👁</button>
+      </div>
+    </div>
+
+    <button class="btn" id="submit-btn" onclick="handleReset()">
+      <div class="btn-spinner"></div>
+      <span class="btn-text">Update password</span>
+    </button>
+
+    <div class="back-link"><a href="/login.html">← Back to sign in</a></div>
+  </div>
+
+  <!-- Success -->
+  <div id="state-success" class="state">
+    <div class="success-icon">✓</div>
+    <h2 style="text-align:center;">Password updated</h2>
+    <p style="text-align:center;">Your password has been changed. Redirecting you to sign in…</p>
+  </div>
+
+  <!-- Error -->
+  <div id="state-error" class="state">
+    <h2>Link expired</h2>
+    <p id="error-msg">This password reset link has expired or already been used. Please request a new one.</p>
+    <a href="/login.html" style="display:block;text-align:center;padding:.75rem;background:var(--teal);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:.9rem;">Back to sign in</a>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL  = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
+  const SUPABASE_ANON = 'sb_publishable_k1pbUhug9wVfaeHkPKMgqw_4EjSjDN9';
+
+  let _accessToken  = null;
+  let _refreshToken = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Supabase puts the session tokens in the URL hash after a recovery link click
+    const hash   = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+
+    const type  = params.get('type');
+    const error = params.get('error');
+
+    _accessToken  = params.get('access_token');
+    _refreshToken = params.get('refresh_token');
+
+    if(error) {
+      showError(params.get('error_description') || 'This reset link is no longer valid.');
+      return;
+    }
+
+    if(!_accessToken || type !== 'recovery') {
+      // Could be a direct visit — show the request form instead
+      showRequestForm();
+      return;
+    }
+
+    showState('form');
+  });
+
+  // ── REQUEST FORM (no token in URL) ───────────
+  function showRequestForm() {
+    const form = document.getElementById('state-form');
+    form.innerHTML = `
+      <h2>Reset password</h2>
+      <p>Enter your email and we'll send you a reset link.</p>
+      <div id="alert" class="alert"></div>
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@district.edu" autocomplete="email" />
+      </div>
+      <button class="btn" id="submit-btn" onclick="handleRequest()">
+        <div class="btn-spinner"></div>
+        <span class="btn-text">Send reset link</span>
+      </button>
+      <div class="back-link"><a href="/login.html">← Back to sign in</a></div>
+    `;
+    showState('form');
+  }
+
+  async function handleRequest() {
+    const email = (document.getElementById('email').value || '').trim();
+    if(!email || !email.includes('@')) {
+      showAlert('Please enter a valid email address.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
+        body: JSON.stringify({ email, options: { redirectTo: `${window.location.origin}/reset.html` } })
+      });
+      // Always show success (don't reveal if email exists — security best practice)
+      document.getElementById('state-form').innerHTML = `
+        <div class="success-icon" style="margin-bottom:1.25rem;">✉️</div>
+        <h2 style="text-align:center;margin-bottom:.75rem;">Check your email</h2>
+        <p style="text-align:center;">If an account exists for ${email}, you'll receive a reset link shortly.</p>
+        <div class="back-link" style="margin-top:1rem;"><a href="/login.html">← Back to sign in</a></div>
+      `;
+    } catch(e) {
+      showAlert('Something went wrong. Please try again.', 'error');
+      setLoading(false);
+    }
+  }
+
+  // ── SET NEW PASSWORD ──────────────────────────
+  async function handleReset() {
+    const pw  = document.getElementById('password').value;
+    const pw2 = document.getElementById('confirm-password').value;
+
+    if(pw.length < 8) { showAlert('Password must be at least 8 characters.', 'error'); return; }
+    if(pw !== pw2)    { showAlert('Passwords do not match.', 'error'); return; }
+
+    setLoading(true);
+
+    try {
+      // Use the access token from the recovery link to update password
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        SUPABASE_ANON,
+          'Authorization': `Bearer ${_accessToken}`,
+        },
+        body: JSON.stringify({ password: pw }),
+      });
+
+      const data = await res.json();
+
+      if(!res.ok || data.error) {
+        showAlert(data.error_description || data.error || 'Failed to update password. Please request a new reset link.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      showState('success');
+      setTimeout(() => { window.location.href = '/login.html?reset=1'; }, 2000);
+
+    } catch(e) {
+      showAlert('Network error. Please try again.', 'error');
+      setLoading(false);
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────
+  function showState(id) {
+    document.querySelectorAll('.state').forEach(el => el.classList.remove('active'));
+    document.getElementById('state-' + id).classList.add('active');
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    if(el) el.textContent = msg;
+    showState('error');
+  }
+
+  function showAlert(msg, type) {
+    const el = document.getElementById('alert');
+    if(!el) return;
+    el.textContent = msg;
+    el.className = 'alert ' + type + ' show';
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('submit-btn');
+    if(!btn) return;
+    btn.classList.toggle('loading', on);
+    btn.disabled = on;
+  }
+
+  function togglePw(id) {
+    const input = document.getElementById(id);
+    if(input) input.type = input.type === 'password' ? 'text' : 'password';
+  }
+
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Enter') {
+      const btn = document.getElementById('submit-btn');
+      if(btn && !btn.disabled) btn.click();
+    }
+  });
+</script>
+</body>
+</html>
