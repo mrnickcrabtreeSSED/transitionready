@@ -11,6 +11,7 @@
     { "src": "/signup.html", "dest": "/signup.html" },
     { "src": "/login.html", "dest": "/login.html" },
     { "src": "/confirm.html", "dest": "/confirm.html" },
+    { "src": "/reset.html", "dest": "/reset.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
