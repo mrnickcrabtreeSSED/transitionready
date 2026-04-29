@@ -5778,6 +5778,12 @@ async function requestDeleteProfile(userId, name) {
 // ══════════════════════════════════════════════
 //  DIRECTOR DASHBOARD
 // ══════════════════════════════════════════════
+// ── DIRECTOR DASHBOARD STATE ─────────────────
+var _dirTab = 'overview';
+var _dirDistricts = [];
+var _dirStudents  = [];
+var _dirPortfolios = [];
+
 async function loadDirectorDashboard() {
   var sb   = getSupabase();
   var dash = document.getElementById('cm-dashboard');
@@ -5788,7 +5794,28 @@ async function loadDirectorDashboard() {
   }
 
   dash.style.display = 'block';
-  dash.innerHTML = '<div style="min-height:100vh;background:#f6f8fb;font-family:\'DM Sans\',sans-serif;">'
+  dash.innerHTML = renderDirectorShell();
+
+  // Load all data upfront
+  try {
+    var distRes    = await sb.from('districts').select('id,name,slug,active,contracted_at,contract_end,billing_tier,seat_count,billing_contact');
+    var studentRes = await sb.from('profiles').select('id,full_name,email,district_id,school_id,created_at').eq('role','student');
+    var portRes    = await sb.from('portfolios').select('student_id,data,last_saved_at,created_at');
+    var auditRes   = await sb.from('audit_log').select('id,actor_id,action,target_id,target_table,school_id,district_id,created_at,meta').order('created_at',{ascending:false}).limit(200);
+
+    _dirDistricts  = distRes.data   || [];
+    _dirStudents   = studentRes.data || [];
+    _dirPortfolios = portRes.data    || [];
+    _dirAuditLog   = auditRes.data   || [];
+
+    switchDirTab(_dirTab);
+  } catch(e) {
+    console.error('Director dashboard load failed:', e);
+  }
+}
+
+function renderDirectorShell() {
+  return '<div style="min-height:100vh;background:#f6f8fb;font-family:\'DM Sans\',sans-serif;">'
 
     // Header
     + '<div style="background:#0f5447;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;">'
@@ -5799,88 +5826,465 @@ async function loadDirectorDashboard() {
     +   '</div>'
     + '</div>'
 
-    + '<div style="max-width:960px;margin:0 auto;padding:2rem;">'
-    +   '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.6rem;color:#1a1f2e;margin-bottom:1.5rem;">Platform Overview</h2>'
-
-    // Stats
-    +   '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">'
-    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
-    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-district-count">—</div>'
-    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Active districts</div>'
-    +     '</div>'
-    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
-    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-student-count">—</div>'
-    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Total students</div>'
-    +     '</div>'
-    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
-    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-completed-count">—</div>'
-    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Portfolios complete</div>'
-    +     '</div>'
+    // Tab bar
+    + '<div style="background:#fff;border-bottom:1px solid #d8dde8;padding:0 2rem;">'
+    +   '<div style="max-width:960px;margin:0 auto;display:flex;gap:0;">'
+    +     dirTab('overview',  'Overview')
+    +     dirTab('analytics', 'Analytics')
+    +     dirTab('billing',   'Billing')
+    +     dirTab('audit',     'Audit Log')
     +   '</div>'
+    + '</div>'
+
+    // Content
+    + '<div style="max-width:960px;margin:0 auto;padding:2rem;" id="dir-content">'
+    +   '<div style="text-align:center;padding:3rem;color:#8a91a3;">Loading...</div>'
+    + '</div>'
+    + '</div>';
+}
+
+function dirTab(id, label) {
+  return '<button onclick="switchDirTab(\''+id+'\')" id="dir-tab-'+id+'" '
+    + 'style="padding:.9rem 1.25rem;background:none;border:none;border-bottom:2px solid transparent;font-family:\'DM Sans\',sans-serif;font-size:.9rem;font-weight:500;color:#8a91a3;cursor:pointer;transition:all .15s;">'
+    + label + '</button>';
+}
+
+function switchDirTab(tab) {
+  _dirTab = tab;
+  // Update tab styles
+  ['overview','analytics','billing','audit'].forEach(function(t) {
+    var el = document.getElementById('dir-tab-'+t);
+    if(!el) return;
+    el.style.borderBottomColor = t === tab ? '#1a7f6e' : 'transparent';
+    el.style.color = t === tab ? '#0f5447' : '#8a91a3';
+    el.style.fontWeight = t === tab ? '600' : '500';
+  });
+
+  var content = document.getElementById('dir-content');
+  if(!content) return;
+
+  switch(tab) {
+    case 'overview':  content.innerHTML = renderDirOverview();  break;
+    case 'analytics': content.innerHTML = renderDirAnalytics(); break;
+    case 'billing':   content.innerHTML = renderDirBilling();   break;
+    case 'audit':     content.innerHTML = renderDirAudit();     break;
+  }
+}
+
+// ── TAB 1: OVERVIEW ──────────────────────────
+function renderDirOverview() {
+  var activeDistricts = _dirDistricts.filter(function(d){ return d.active; });
+  var totalStudents   = _dirStudents.length;
+  var portMap = {};
+  _dirPortfolios.forEach(function(p){ portMap[p.student_id] = p; });
+  var completed = _dirStudents.filter(function(s){ return calcPortfolioPct((portMap[s.id]||{}).data) >= 80; }).length;
+
+  var html = ''
+    // Stats
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;">'
+    + statCard('dir-district-count', activeDistricts.length, 'Active districts')
+    + statCard('dir-student-count',  totalStudents,           'Total students')
+    + statCard('dir-completed-count',completed,               'Portfolios ≥80%')
+    + statCard('dir-inprogress-count',_dirPortfolios.length - completed, 'In progress')
+    + '</div>'
+
+    // Invite district admin
+    + '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
+    +   '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Invite a district administrator</div>'
+    +   '<div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;">'
+    +     '<div style="flex:1;min-width:200px;">'
+    +       '<label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">Select district</label>'
+    +       '<select id="da-invite-district" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;font-family:\'DM Sans\',sans-serif;outline:none;">'
+    +         '<option value="">Choose district...</option>'
+    +         activeDistricts.map(function(d){ return '<option value="'+d.id+'">'+d.name+'</option>'; }).join('')
+    +       '</select>'
+    +     '</div>'
+    +     '<button onclick="generateDistrictAdminInvite()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;">Generate invite</button>'
+    +   '</div>'
+    +   '<div id="da-invite-result" style="font-size:.85rem;color:#4a5368;margin-top:.75rem;word-break:break-all;"></div>'
+    + '</div>'
 
     // Provision new district
-    +   '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
-    +     '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Provision new district</div>'
-    +     '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:end;">'
-    +       '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">District name</label>'
-    +         '<input id="new-district-name" placeholder="e.g. Elk Grove Unified" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>'
-    +       '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">Slug (URL-safe)</label>'
-    +         '<input id="new-district-slug" placeholder="e.g. elk-grove-unified" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>'
-    +       '<button onclick="provisionDistrict()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;">Provision</button>'
-    +     '</div>'
-    +     '<div id="dir-provision-msg" style="font-size:.82rem;margin-top:.75rem;"></div>'
+    + '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
+    +   '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Provision new district</div>'
+    +   '<div style="display:grid;grid-template-columns:1fr 1fr 120px 120px auto;gap:.75rem;align-items:end;flex-wrap:wrap;">'
+    +     inputField('new-district-name', 'District name',    'e.g. Elk Grove Unified')
+    +     inputField('new-district-slug', 'Slug (URL-safe)',  'e.g. elk-grove-unified')
+    +     inputField('new-district-seats','Seats licensed',   'e.g. 50')
+    +     inputField('new-district-end',  'Contract end',     '', 'date')
+    +     '<button onclick="provisionDistrict()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;align-self:end;">Provision</button>'
     +   '</div>'
+    +   '<div id="dir-provision-msg" style="font-size:.82rem;margin-top:.75rem;"></div>'
+    + '</div>'
 
-    // Districts table
-    +   '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
-    +     '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">Active districts</div>'
-    +     '<div id="dir-district-list" style="padding:.5rem;"><div style="text-align:center;padding:2rem;color:#8a91a3;">Loading...</div></div>'
+    // Districts list
+    + '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
+    +   '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">All districts</div>'
+    +   renderDistrictRows(activeDistricts)
+    + '</div>';
+
+  return html;
+}
+
+function renderDistrictRows(districts) {
+  if(!districts.length) return '<div style="text-align:center;padding:2rem;color:#8a91a3;">No districts provisioned yet.</div>';
+  var portMap = {};
+  _dirPortfolios.forEach(function(p){ portMap[p.student_id] = p; });
+  return districts.map(function(d) {
+    var distStudents = _dirStudents.filter(function(s){ return s.district_id === d.id; });
+    var distCompleted = distStudents.filter(function(s){ return calcPortfolioPct((portMap[s.id]||{}).data) >= 80; }).length;
+    var contracted = d.contracted_at ? new Date(d.contracted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    var contractEnd = d.contract_end ? new Date(d.contract_end).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    var seats = d.seat_count || '—';
+    var utilPct = d.seat_count ? Math.round((distStudents.length / d.seat_count) * 100) : null;
+    var utilColor = utilPct >= 90 ? '#c0392b' : utilPct >= 70 ? '#BA7517' : '#1a7f6e';
+    return '<div style="padding:1rem 1.5rem;border-bottom:1px solid #f0f2f6;">'
+      + '<div style="display:flex;align-items:center;gap:1rem;margin-bottom:.5rem;">'
+      +   '<div style="flex:1;">'
+      +     '<div style="font-size:.95rem;font-weight:500;color:#1a1f2e;">'+d.name+'</div>'
+      +     '<div style="font-size:.78rem;color:#8a91a3;">'+d.slug+' · Contracted: '+contracted+' · Ends: '+contractEnd+'</div>'
+      +   '</div>'
+      +   '<span style="font-size:.75rem;font-weight:600;color:#1a7f6e;background:#e8f5f2;padding:3px 10px;border-radius:12px;">Active</span>'
+      +   '<button onclick="deactivateDistrict(\''+d.id+'\',\''+d.name+'\')" style="background:#fdf0ee;border:1px solid #f5c0b8;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;">Deactivate</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:1.5rem;">'
+      +   '<span style="font-size:.8rem;color:#4a5368;">👥 '+distStudents.length+' students</span>'
+      +   '<span style="font-size:.8rem;color:#4a5368;">✓ '+distCompleted+' complete</span>'
+      +   '<span style="font-size:.8rem;color:#4a5368;">🎟 '+seats+' seats'+(utilPct !== null ? ' <span style="color:'+utilColor+';">('+utilPct+'% used)</span>' : '')+'</span>'
+      +   (d.billing_contact ? '<span style="font-size:.8rem;color:#4a5368;">📧 '+d.billing_contact+'</span>' : '')
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── TAB 2: ANALYTICS ─────────────────────────
+function renderDirAnalytics() {
+  var portMap = {};
+  _dirPortfolios.forEach(function(p){ portMap[p.student_id] = p; });
+  var activeDistricts = _dirDistricts.filter(function(d){ return d.active; });
+
+  // Monthly signups (last 6 months)
+  var months = [];
+  for(var i = 5; i >= 0; i--) {
+    var d = new Date();
+    d.setMonth(d.getMonth() - i);
+    months.push({ label: d.toLocaleDateString('en-US',{month:'short',year:'2-digit'}), year: d.getFullYear(), month: d.getMonth() });
+  }
+
+  var monthlyCounts = months.map(function(m) {
+    return _dirStudents.filter(function(s) {
+      var created = new Date(s.created_at);
+      return created.getFullYear() === m.year && created.getMonth() === m.month;
+    }).length;
+  });
+  var maxCount = Math.max.apply(null, monthlyCounts.concat([1]));
+
+  var html = '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.5rem;color:#1a1f2e;margin-bottom:1.5rem;">Platform Analytics</h2>'
+
+    // Monthly signups chart
+    + '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:1.5rem;">'
+    +   '<div style="font-size:.9rem;font-weight:600;color:#1a1f2e;margin-bottom:1.25rem;">New students by month</div>'
+    +   '<div style="display:flex;align-items:flex-end;gap:.75rem;height:120px;">'
+    +   months.map(function(m, i) {
+          var count = monthlyCounts[i];
+          var barPct = Math.round((count / maxCount) * 100);
+          var barH = Math.max(barPct, count > 0 ? 8 : 2);
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            + '<div style="font-size:.8rem;font-weight:600;color:#0f5447;">'+count+'</div>'
+            + '<div style="width:100%;background:#e8f5f2;border-radius:4px 4px 0 0;height:'+barH+'%;min-height:'+(count>0?'8px':'2px')+';background:#1a7f6e;transition:height .3s;"></div>'
+            + '<div style="font-size:.72rem;color:#8a91a3;">'+m.label+'</div>'
+            + '</div>';
+        }).join('')
     +   '</div>'
+    + '</div>'
 
-    + '</div></div>';
+    // Per-district breakdown
+    + '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;margin-bottom:1.5rem;">'
+    +   '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:.9rem;font-weight:600;color:#1a1f2e;">Completion by district</div>'
+    +   '<table style="width:100%;border-collapse:collapse;">'
+    +   '<thead><tr style="background:#f6f8fb;">'
+    +     '<th style="text-align:left;padding:.75rem 1.5rem;font-size:.78rem;color:#8a91a3;font-weight:600;">District</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Students</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Started</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">≥80% Complete</th>'
+    +     '<th style="text-align:left;padding:.75rem 1.5rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Avg completion</th>'
+    +   '</tr></thead><tbody>'
+    +   activeDistricts.map(function(d) {
+          var ds = _dirStudents.filter(function(s){ return s.district_id === d.id; });
+          var started   = ds.filter(function(s){ return portMap[s.id]; }).length;
+          var completed = ds.filter(function(s){ return calcPortfolioPct((portMap[s.id]||{}).data) >= 80; }).length;
+          var pcts      = ds.map(function(s){ return calcPortfolioPct((portMap[s.id]||{}).data); });
+          var avg       = pcts.length ? Math.round(pcts.reduce(function(a,b){return a+b;},0)/pcts.length) : 0;
+          var avgColor  = avg >= 80 ? '#1a7f6e' : avg >= 40 ? '#BA7517' : '#8a91a3';
+          return '<tr style="border-top:1px solid #f0f2f6;">'
+            + '<td style="padding:.75rem 1.5rem;font-size:.875rem;font-weight:500;color:#1a1f2e;">'+d.name+'</td>'
+            + '<td style="text-align:center;padding:.75rem;font-size:.875rem;color:#4a5368;">'+ds.length+'</td>'
+            + '<td style="text-align:center;padding:.75rem;font-size:.875rem;color:#4a5368;">'+started+'</td>'
+            + '<td style="text-align:center;padding:.75rem;font-size:.875rem;color:#1a7f6e;font-weight:600;">'+completed+'</td>'
+            + '<td style="padding:.75rem 1.5rem;">'
+            +   '<div style="display:flex;align-items:center;gap:.5rem;">'
+            +     '<div style="flex:1;height:6px;background:#f0f2f6;border-radius:3px;overflow:hidden;">'
+            +       '<div style="height:100%;width:'+avg+'%;background:'+avgColor+';border-radius:3px;"></div>'
+            +     '</div>'
+            +     '<span style="font-size:.8rem;color:'+avgColor+';font-weight:600;min-width:36px;">'+avg+'%</span>'
+            +   '</div>'
+            + '</td>'
+            + '</tr>';
+        }).join('')
+    +   '</tbody></table>'
+    + '</div>'
 
-  // Load data
-  try {
-    var distRes  = await sb.from('districts').select('id, name, slug, active, contracted_at').eq('active', true);
-    var districts = distRes.data || [];
-    document.getElementById('dir-district-count').textContent = districts.length;
+    // Tab completion breakdown (platform-wide)
+    + '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;">'
+    +   '<div style="font-size:.9rem;font-weight:600;color:#1a1f2e;margin-bottom:1.25rem;">Tab completion — platform wide</div>'
+    +   renderTabBreakdown(portMap)
+    + '</div>';
 
-    var studentRes = await sb.from('profiles').select('id').eq('role', 'student');
-    document.getElementById('dir-student-count').textContent = (studentRes.data || []).length;
+  return html;
+}
 
-    var portRes = await sb.from('portfolios').select('data');
-    var completed = (portRes.data || []).filter(function(p){ return calcPortfolioPct(p.data) >= 80; }).length;
-    document.getElementById('dir-completed-count').textContent = completed;
+function renderTabBreakdown(portMap) {
+  var tabNames = ['Profile','Discovery','Work Samples','Resources','Generate Docs','Supporting Docs','Portfolio'];
+  var tabKeys  = ['s-first','disc','samples','resources','resume','support','template'];
+  // Rough completion per tab based on available data
+  var tabCounts = [0,0,0,0,0,0,0];
+  var total = _dirStudents.length || 1;
 
-    if(districts.length === 0) {
-      document.getElementById('dir-district-list').innerHTML =
-        '<div style="text-align:center;padding:2rem;color:#8a91a3;">No districts provisioned yet.</div>';
-    } else {
-      document.getElementById('dir-district-list').innerHTML = districts.map(function(d) {
-        var contracted = d.contracted_at
-          ? new Date(d.contracted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-          : 'Unknown';
-        return '<div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.5rem;border-bottom:1px solid #f0f2f6;">'
-          + '<div style="flex:1;">'
-          +   '<div style="font-size:.95rem;font-weight:500;color:#1a1f2e;">'+d.name+'</div>'
-          +   '<div style="font-size:.78rem;color:#8a91a3;">'+d.slug+' · Contracted: '+contracted+'</div>'
+  _dirStudents.forEach(function(s) {
+    var port = portMap[s.id];
+    if(!port || !port.data) return;
+    var d = port.data;
+    if(d.fields && d.fields['s-first']) tabCounts[0]++;
+    if(d.discState && Object.keys(d.discState).length > 0) tabCounts[1]++;
+    if(d.samples && Object.keys(d.samples).some(function(k){ return d.samples[k]; })) tabCounts[2]++;
+    if(d.resources && Object.keys(d.resources).some(function(k){ return d.resources[k]; })) tabCounts[3]++;
+    if(d.generatedDocs && d.generatedDocs.resume) tabCounts[4]++;
+    if(d.generatedDocs && d.generatedDocs.lor) tabCounts[5]++;
+    if(d.template) tabCounts[6]++;
+  });
+
+  return '<div style="display:flex;flex-direction:column;gap:.75rem;">'
+    + tabNames.map(function(name, i) {
+        var pct = Math.round((tabCounts[i] / total) * 100);
+        var color = pct >= 70 ? '#1a7f6e' : pct >= 40 ? '#BA7517' : '#8a91a3';
+        return '<div style="display:flex;align-items:center;gap:1rem;">'
+          + '<div style="font-size:.82rem;color:#4a5368;min-width:120px;">'+name+'</div>'
+          + '<div style="flex:1;height:8px;background:#f0f2f6;border-radius:4px;overflow:hidden;">'
+          +   '<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px;transition:width .4s;"></div>'
           + '</div>'
-          + '<span style="font-size:.75rem;font-weight:600;color:#1a7f6e;background:#e8f5f2;padding:3px 10px;border-radius:12px;">Active</span>'
-          + '<button onclick="deactivateDistrict(\''+d.id+'\',\''+d.name+'\')" style="background:#fdf0ee;border:1px solid #f5c0b8;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;">Deactivate</button>'
+          + '<div style="font-size:.8rem;color:'+color+';font-weight:600;min-width:36px;text-align:right;">'+pct+'%</div>'
           + '</div>';
-      }).join('');
-    }
+      }).join('')
+    + '</div>';
+}
 
+// ── TAB 3: BILLING ───────────────────────────
+function renderDirBilling() {
+  var portMap = {};
+  _dirPortfolios.forEach(function(p){ portMap[p.student_id] = p; });
+  var activeDistricts = _dirDistricts.filter(function(d){ return d.active; });
+
+  var html = '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.5rem;color:#1a1f2e;margin-bottom:1.5rem;">Billing & Contracts</h2>'
+
+    + '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;margin-bottom:1.5rem;">'
+    +   '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:.9rem;font-weight:600;color:#1a1f2e;">District billing summary</div>'
+    +   '<table style="width:100%;border-collapse:collapse;">'
+    +   '<thead><tr style="background:#f6f8fb;">'
+    +     '<th style="text-align:left;padding:.75rem 1.5rem;font-size:.78rem;color:#8a91a3;font-weight:600;">District</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Tier</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Seats</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Active students</th>'
+    +     '<th style="text-align:center;padding:.75rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Contract end</th>'
+    +     '<th style="text-align:left;padding:.75rem 1.5rem;font-size:.78rem;color:#8a91a3;font-weight:600;">Billing contact</th>'
+    +     '<th style="padding:.75rem;"></th>'
+    +   '</tr></thead><tbody>'
+    +   activeDistricts.map(function(d) {
+          var ds      = _dirStudents.filter(function(s){ return s.district_id === d.id; });
+          var endDate = d.contract_end ? new Date(d.contract_end).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+          var daysLeft = d.contract_end ? Math.ceil((new Date(d.contract_end) - new Date()) / (1000*60*60*24)) : null;
+          var endColor = daysLeft !== null && daysLeft < 60 ? '#c0392b' : '#4a5368';
+          var tier = d.billing_tier || 'standard';
+          var tierColor = tier === 'premium' ? '#7c3aed' : '#1a7f6e';
+          return '<tr style="border-top:1px solid #f0f2f6;">'
+            + '<td style="padding:.75rem 1.5rem;font-size:.875rem;font-weight:500;color:#1a1f2e;">'+d.name+'</td>'
+            + '<td style="text-align:center;padding:.75rem;">'
+            +   '<span style="font-size:.75rem;font-weight:600;color:'+tierColor+';background:'+tierColor+'18;padding:2px 8px;border-radius:10px;text-transform:capitalize;">'+tier+'</span>'
+            + '</td>'
+            + '<td style="text-align:center;padding:.75rem;font-size:.875rem;color:#4a5368;">'+(d.seat_count||'—')+'</td>'
+            + '<td style="text-align:center;padding:.75rem;">'
+            +   '<span style="font-size:.875rem;color:'+(ds.length > (d.seat_count||999) ? '#c0392b' : '#4a5368')+';">'+ds.length+'</span>'
+            +   (ds.length > (d.seat_count||999) ? ' <span style="font-size:.75rem;color:#c0392b;">⚠ over limit</span>' : '')
+            + '</td>'
+            + '<td style="text-align:center;padding:.75rem;font-size:.875rem;color:'+endColor+';">'+endDate+(daysLeft !== null && daysLeft < 60 ? ' <span style="font-size:.72rem;">('+daysLeft+'d)</span>' : '')+'</td>'
+            + '<td style="padding:.75rem 1.5rem;font-size:.82rem;color:#4a5368;">'+(d.billing_contact||'—')+'</td>'
+            + '<td style="padding:.75rem;"><button onclick="editDistrictBilling(\''+d.id+'\')" style="background:#f6f8fb;border:1px solid #d8dde8;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;color:#4a5368;">Edit</button></td>'
+            + '</tr>';
+        }).join('')
+    +   '</tbody></table>'
+    + '</div>'
+
+    // Edit billing modal placeholder
+    + '<div id="billing-edit-panel" style="display:none;background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;">'
+    +   '<div style="font-size:.9rem;font-weight:600;color:#1a1f2e;margin-bottom:1rem;" id="billing-edit-title">Edit billing details</div>'
+    +   '<input type="hidden" id="billing-edit-id" />'
+    +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">'
+    +     '<div>'+labeledInput('billing-tier-input','Billing tier','standard')+'</div>'
+    +     '<div>'+labeledInput('billing-seats-input','Seats licensed','0')+'</div>'
+    +     '<div>'+labeledInput('billing-end-input','Contract end date','','date')+'</div>'
+    +     '<div>'+labeledInput('billing-contact-input','Billing contact email','')+'</div>'
+    +   '</div>'
+    +   '<div style="display:flex;gap:.75rem;">'
+    +     '<button onclick="saveBillingEdit()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.65rem 1.25rem;font-size:.875rem;font-weight:600;cursor:pointer;">Save</button>'
+    +     '<button onclick="document.getElementById(\'billing-edit-panel\').style.display=\'none\'" style="background:none;border:1.5px solid #d8dde8;border-radius:8px;padding:.65rem 1rem;font-size:.875rem;cursor:pointer;color:#4a5368;">Cancel</button>'
+    +   '</div>'
+    +   '<div id="billing-edit-msg" style="font-size:.82rem;margin-top:.5rem;"></div>'
+    + '</div>';
+
+  return html;
+}
+
+function editDistrictBilling(districtId) {
+  var d = _dirDistricts.find(function(x){ return x.id === districtId; });
+  if(!d) return;
+  document.getElementById('billing-edit-id').value       = d.id;
+  document.getElementById('billing-tier-input').value    = d.billing_tier    || 'standard';
+  document.getElementById('billing-seats-input').value   = d.seat_count      || '';
+  document.getElementById('billing-end-input').value     = d.contract_end    ? d.contract_end.slice(0,10) : '';
+  document.getElementById('billing-contact-input').value = d.billing_contact || '';
+  document.getElementById('billing-edit-title').textContent = 'Edit billing — ' + d.name;
+  document.getElementById('billing-edit-panel').style.display = 'block';
+  document.getElementById('billing-edit-panel').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function saveBillingEdit() {
+  var sb  = getSupabase();
+  var id  = document.getElementById('billing-edit-id').value;
+  var msg = document.getElementById('billing-edit-msg');
+  try {
+    var res = await sb.from('districts').update({
+      billing_tier:    document.getElementById('billing-tier-input').value.trim() || 'standard',
+      seat_count:      parseInt(document.getElementById('billing-seats-input').value) || 0,
+      contract_end:    document.getElementById('billing-end-input').value || null,
+      billing_contact: document.getElementById('billing-contact-input').value.trim() || null,
+    }).eq('id', id);
+    if(res.error) throw res.error;
+    if(msg) { msg.textContent = '✓ Saved.'; msg.style.color = '#1a7f6e'; }
+    // Refresh data
+    var distRes = await sb.from('districts').select('id,name,slug,active,contracted_at,contract_end,billing_tier,seat_count,billing_contact');
+    _dirDistricts = distRes.data || [];
+    setTimeout(function(){ switchDirTab('billing'); }, 800);
   } catch(e) {
-    console.error('Director dashboard failed:', e);
+    if(msg) { msg.textContent = 'Failed: ' + e.message; msg.style.color = '#c0392b'; }
+  }
+}
+
+// ── TAB 4: AUDIT LOG ─────────────────────────
+var _dirAuditLog = [];
+
+function renderDirAudit() {
+  var districtMap = {};
+  _dirDistricts.forEach(function(d){ districtMap[d.id] = d.name; });
+
+  var actionColors = {
+    'account.created':    '#1a7f6e',
+    'portfolio.updated':  '#1a7f6e',
+    'profile.deleted':    '#c0392b',
+    'portfolio.viewed':   '#4a5368',
+  };
+
+  var html = '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.5rem;color:#1a1f2e;margin-bottom:1.5rem;">Audit Log</h2>'
+    + '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
+    +   '<div style="padding:1rem 1.5rem;border-bottom:1px solid #d8dde8;display:flex;align-items:center;justify-content:space-between;">'
+    +     '<div style="font-size:.9rem;font-weight:600;color:#1a1f2e;">Recent activity</div>'
+    +     '<div style="font-size:.78rem;color:#8a91a3;">Last 200 events</div>'
+    +   '</div>';
+
+  if(!_dirAuditLog.length) {
+    html += '<div style="text-align:center;padding:2rem;color:#8a91a3;">No audit events yet.</div>';
+  } else {
+    html += '<div style="overflow-x:auto;">'
+      + '<table style="width:100%;border-collapse:collapse;">'
+      + '<thead><tr style="background:#f6f8fb;">'
+      +   '<th style="text-align:left;padding:.6rem 1.5rem;font-size:.75rem;color:#8a91a3;font-weight:600;">Time</th>'
+      +   '<th style="text-align:left;padding:.6rem 1rem;font-size:.75rem;color:#8a91a3;font-weight:600;">Action</th>'
+      +   '<th style="text-align:left;padding:.6rem 1rem;font-size:.75rem;color:#8a91a3;font-weight:600;">District</th>'
+      +   '<th style="text-align:left;padding:.6rem 1.5rem;font-size:.75rem;color:#8a91a3;font-weight:600;">Target</th>'
+      + '</tr></thead><tbody>'
+      + _dirAuditLog.map(function(e) {
+          var time = new Date(e.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+          var color = actionColors[e.action] || '#4a5368';
+          var district = e.district_id ? (districtMap[e.district_id] || e.district_id.slice(0,8)+'…') : '—';
+          var target = e.target_id ? e.target_id.slice(0,8)+'…' : '—';
+          return '<tr style="border-top:1px solid #f0f2f6;">'
+            + '<td style="padding:.6rem 1.5rem;font-size:.78rem;color:#8a91a3;white-space:nowrap;">'+time+'</td>'
+            + '<td style="padding:.6rem 1rem;"><span style="font-size:.78rem;font-weight:600;color:'+color+';">'+e.action+'</span></td>'
+            + '<td style="padding:.6rem 1rem;font-size:.78rem;color:#4a5368;">'+district+'</td>'
+            + '<td style="padding:.6rem 1.5rem;font-size:.78rem;color:#8a91a3;font-family:monospace;">'+target+'</td>'
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ── SHARED HELPERS ───────────────────────────
+function statCard(id, value, label) {
+  return '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    + '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="'+id+'">'+value+'</div>'
+    + '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">'+label+'</div>'
+    + '</div>';
+}
+
+function inputField(id, label, placeholder, type) {
+  return '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">'+label+'</label>'
+    + '<input id="'+id+'" type="'+(type||'text')+'" placeholder="'+placeholder+'" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>';
+}
+
+function labeledInput(id, label, placeholder, type) {
+  return '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">'+label+'</label>'
+    + '<input id="'+id+'" type="'+(type||'text')+'" placeholder="'+placeholder+'" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>';
+}
+
+async function generateDistrictAdminInvite() {
+  var sb         = getSupabase();
+  var districtId = document.getElementById('da-invite-district').value;
+  var resultEl   = document.getElementById('da-invite-result');
+  if(!districtId) { if(resultEl) resultEl.textContent = 'Please select a district.'; return; }
+  if(resultEl) resultEl.textContent = 'Generating...';
+
+  try {
+    // Get the default school for this district
+    var schoolRes = await sb.from('schools').select('id').eq('district_id', districtId).eq('active', true).limit(1).single();
+    if(schoolRes.error) throw new Error('No school found for this district');
+
+    var res = await sb.from('invites').insert({
+      role:        'district_admin',
+      school_id:   schoolRes.data.id,
+      district_id: districtId,
+      invited_by:  _currentUser.id
+    }).select('token').single();
+
+    if(res.error) throw res.error;
+
+    var link = window.location.origin + '/signup.html?token=' + res.data.token;
+    resultEl.innerHTML = '<span style="color:#1a7f6e;font-weight:500;">✓ Link ready:</span> '
+      + '<a href="'+link+'" style="color:#1a7f6e;" target="_blank">'+link+'</a>'
+      + ' <button onclick="navigator.clipboard.writeText(\''+link+'\')" '
+      + 'style="margin-left:8px;background:#e8f5f2;border:1px solid #1a7f6e;color:#0f5447;border-radius:6px;padding:3px 10px;font-size:.8rem;cursor:pointer;">Copy</button>';
+  } catch(e) {
+    if(resultEl) resultEl.textContent = 'Failed: ' + e.message;
   }
 }
 
 async function provisionDistrict() {
-  var sb   = getSupabase();
-  var name = document.getElementById('new-district-name').value.trim();
-  var slug = document.getElementById('new-district-slug').value.trim().toLowerCase().replace(/\s+/g,'-');
-  var msg  = document.getElementById('dir-provision-msg');
+  var sb    = getSupabase();
+  var name  = document.getElementById('new-district-name').value.trim();
+  var slug  = document.getElementById('new-district-slug').value.trim().toLowerCase().replace(/\s+/g,'-');
+  var seats = parseInt(document.getElementById('new-district-seats').value) || 0;
+  var end   = document.getElementById('new-district-end').value || null;
+  var msg   = document.getElementById('dir-provision-msg');
 
   if(!name || !slug) {
     if(msg) { msg.textContent = 'Please enter both a name and slug.'; msg.style.color = '#c0392b'; }
@@ -5889,29 +6293,31 @@ async function provisionDistrict() {
 
   try {
     var res = await sb.from('districts').insert({
-      name: name,
-      slug: slug,
-      active: true,
+      name:          name,
+      slug:          slug,
+      active:        true,
       contracted_at: new Date().toISOString(),
-      contracted_by: _currentUser.id
+      contracted_by: _currentUser.id,
+      seat_count:    seats,
+      contract_end:  end,
+      billing_tier:  'standard'
     }).select('id').single();
 
     if(res.error) throw res.error;
 
-    // Also create a default school for the district
     await sb.from('schools').insert({
       district_id: res.data.id,
-      name: name + ' (Main)',
-      active: true
+      name:        name + ' (Main)',
+      active:      true
     });
 
-    if(msg) { msg.textContent = '✓ District provisioned successfully.'; msg.style.color = '#1a7f6e'; }
-    document.getElementById('new-district-name').value = '';
-    document.getElementById('new-district-slug').value = '';
+    if(msg) { msg.textContent = '✓ District provisioned. You can now generate a district admin invite above.'; msg.style.color = '#1a7f6e'; }
+    document.getElementById('new-district-name').value  = '';
+    document.getElementById('new-district-slug').value  = '';
+    document.getElementById('new-district-seats').value = '';
+    document.getElementById('new-district-end').value   = '';
 
-    // Refresh
     setTimeout(loadDirectorDashboard, 1000);
-
   } catch(e) {
     if(msg) { msg.textContent = 'Failed: ' + e.message; msg.style.color = '#c0392b'; }
   }
