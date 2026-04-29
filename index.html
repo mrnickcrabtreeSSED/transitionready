@@ -4952,14 +4952,14 @@ function hookProgressListeners() {
 //  INITIALISE ON DOM READY
 // ══════════════════════════════════════════════
 // ══════════════════════════════════════════════
-//  SUPABASE + AUTH
+//  SUPABASE + AUTH (updated for invite-based auth)
 // ══════════════════════════════════════════════
 var SUPA_URL = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtbnN3bnZ2bWxua2JsbXFnemNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwNzU3NjEsImV4cCI6MjA5MTY1MTc2MX0.o_EkYTKi6u4weJ7-tSbDEJ0s04ahIOekBX11nG-ROrw';
+var SUPA_KEY = 'sb_publishable_k1pbUhug9wVfaeHkPKMgqw_4EjSjDN9';
 var _supa = null;
 var _currentUser = null;
-var _currentUserRole = null;   // 'student' | 'case_manager' | 'admin' | null — populated from user_roles table
-var _currentUserSchool = null; // school name from user_roles — used by admins for school-scoped caseload
+var _currentUserRole = null;   // 'student' | 'case_manager' | 'district_admin' | 'director'
+var _currentUserProfile = null; // full profiles row
 
 function getSupabase() {
   if(!_supa && window.supabase) {
@@ -4968,35 +4968,13 @@ function getSupabase() {
   return _supa;
 }
 
-// ── SIGN IN ──────────────────────────────────
-function signInWithGoogle() {
-  var sb = getSupabase();
-  if(!sb) { showAuthError('Supabase not loaded. Please refresh.'); return; }
-  sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.origin + window.location.pathname }
-  }).then(function(res) {
-    if(res.error) showAuthError(res.error.message);
-  });
-}
-
+// ── SIGN OUT ──────────────────────────────────
 function signOut() {
   var sb = getSupabase();
   if(sb) sb.auth.signOut().then(function() {
-    _currentUser = null;
-    updateUserBar(null);
-    document.getElementById('auth-screen').classList.add('visible');
-    document.getElementById('cm-dashboard').style.display = 'none';
-    var app = document.querySelector('.app-header');
-    if(app) app.style.display = 'none';
-    var main = document.getElementById('main-app');
-    if(main) main.style.display = 'none';
+    sessionStorage.removeItem('tr_session');
+    window.location.href = '/login.html';
   });
-}
-
-function showAuthError(msg) {
-  var el = document.getElementById('auth-error');
-  if(el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
 // ── SESSION HANDLER ──────────────────────────
@@ -5004,36 +4982,49 @@ async function handleSession(session) {
   var user = session ? session.user : null;
   _currentUser = user;
 
-  var authScreen = document.getElementById('auth-screen');
-  var mainApp    = document.getElementById('main-app');
-  var appHeader  = document.querySelector('.app-header');
+  var authScreen   = document.getElementById('auth-screen');
+  var mainApp      = document.getElementById('main-app');
+  var appHeader    = document.querySelector('.app-header');
   var progressWrap = document.querySelector('.progress-wrap');
-  var mainEl     = document.querySelector('main');
+  var mainEl       = document.querySelector('main');
 
   if(!user) {
-    // Show login
-    if(authScreen) authScreen.classList.add('visible');
-    if(appHeader) appHeader.style.display = 'none';
-    if(progressWrap) progressWrap.style.display = 'none';
-    if(mainEl) mainEl.style.display = 'none';
+    // No session — redirect to login
+    window.location.href = '/login.html';
     return;
   }
 
-  // Logged in
+  // Hide auth screen if still visible
   if(authScreen) { authScreen.classList.remove('visible'); authScreen.style.display = 'none'; }
   updateUserBar(user);
 
-  // Resolve role from user_roles table (NEVER trust client-side email lists)
-  var role = await resolveUserRole(user);
-  _currentUserRole = role.role;
-  _currentUserSchool = role.school;
+  // Resolve role from profiles table
+  var profile = await resolveUserRole(user);
+  _currentUserRole    = profile.role;
+  _currentUserProfile = profile;
 
   // Route based on role
-  if(role.role === 'case_manager' || role.role === 'admin') {
+  if(profile.role === 'case_manager') {
     if(appHeader) appHeader.style.display = 'none';
     if(progressWrap) progressWrap.style.display = 'none';
     if(mainEl) mainEl.style.display = 'none';
     loadCMDashboard();
+    return;
+  }
+
+  if(profile.role === 'district_admin') {
+    if(appHeader) appHeader.style.display = 'none';
+    if(progressWrap) progressWrap.style.display = 'none';
+    if(mainEl) mainEl.style.display = 'none';
+    loadDistrictAdminDashboard();
+    return;
+  }
+
+  if(profile.role === 'director') {
+    if(appHeader) appHeader.style.display = 'none';
+    if(progressWrap) progressWrap.style.display = 'none';
+    if(mainEl) mainEl.style.display = 'none';
+    loadDirectorDashboard();
     return;
   }
 
@@ -5042,61 +5033,35 @@ async function handleSession(session) {
   if(progressWrap) progressWrap.style.display = '';
   if(mainEl) mainEl.style.display = '';
 
-  // Load cloud data for this user
-  // Load cloud data for this user
+  // Load portfolio from cloud
   loadCloudData(user.id);
-
-  // Populate the Connect Case Manager card state
   loadMyCaseManager();
 }
 
 // ── ROLE RESOLVER ────────────────────────────
-// Looks up the user's row in user_roles. If none exists, auto-provisions
-// a student row (first-time login). Returns { role, school }.
-// Case-manager/admin roles are NEVER auto-provisioned — they must be
-// set manually in Supabase by a DB admin for security.
+// Reads role from profiles table — the single source of truth.
+// Role is NEVER auto-provisioned here; it was set at invite consumption.
 async function resolveUserRole(user) {
   var sb = getSupabase();
-  if(!sb) return { role: 'student', school: null };
+  if(!sb) return { role: 'student', school_id: null, district_id: null };
   try {
-    // First attempt: direct SELECT on the user's own row (RLS policy allows this)
-    var res = await sb.from('user_roles')
-      .select('role,school,full_name')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    var res = await sb.from('profiles')
+      .select('role, school_id, district_id, full_name, email')
+      .eq('id', user.id)
+      .single();
 
-    if(res.data) {
-      return { role: res.data.role, school: res.data.school };
-    }
+    if(res.data) return res.data;
 
-    // No row returned — could be genuinely new user, OR the SELECT hit an
-    // RLS/timing issue. Use UPSERT with ON CONFLICT DO NOTHING so we never
-    // accidentally downgrade an existing case_manager/admin row to student.
-    var fullName = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
-    await sb.from('user_roles').upsert({
-      user_id: user.id,
-      role: 'student',
-      email: user.email,
-      full_name: fullName
-    }, { onConflict: 'user_id', ignoreDuplicates: true });
+    // No profile row — this user signed in outside the invite flow
+    // (e.g. old Google OAuth session). Sign them out safely.
+    console.warn('No profile row found for user — signing out');
+    signOut();
+    return { role: 'student', school_id: null, district_id: null };
 
-    // Re-read the row — if it already existed (with case_manager or admin role),
-    // the upsert with ignoreDuplicates left it untouched, and we'll now see the real role.
-    var reread = await sb.from('user_roles')
-      .select('role,school,full_name')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if(reread.data) {
-      return { role: reread.data.role, school: reread.data.school };
-    }
-
-    // Still nothing — we genuinely created a fresh student row but RLS is hiding it.
-    // Safe default.
-    return { role: 'student', school: null };
   } catch(e) {
-    console.warn('Role lookup failed, defaulting to student:', e);
-    return { role: 'student', school: null };
+    console.warn('Role lookup failed:', e);
+    signOut();
+    return { role: 'student', school_id: null, district_id: null };
   }
 }
 
@@ -5105,15 +5070,16 @@ function updateUserBar(user) {
   var bar = document.getElementById('user-bar');
   if(!bar) return;
   if(!user) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
-  var initials = (user.user_metadata && user.user_metadata.full_name)
-    ? user.user_metadata.full_name.split(' ').map(function(n){return n[0];}).join('').slice(0,2).toUpperCase()
+  var meta = user.user_metadata || {};
+  var initials = meta.full_name
+    ? meta.full_name.split(' ').map(function(n){return n[0];}).join('').slice(0,2).toUpperCase()
     : (user.email ? user.email[0].toUpperCase() : '?');
-  var avatarUrl = user.user_metadata && user.user_metadata.avatar_url;
+  var avatarUrl = meta.avatar_url;
   var avatar = avatarUrl
     ? '<img src="'+avatarUrl+'" class="user-avatar" alt="avatar">'
     : '<div class="user-avatar-fallback">'+initials+'</div>';
-  var name = (user.user_metadata && user.user_metadata.full_name)
-    ? user.user_metadata.full_name.split(' ')[0]
+  var name = meta.full_name
+    ? meta.full_name.split(' ')[0]
     : user.email.split('@')[0];
   bar.style.display = 'flex';
   bar.innerHTML = avatar
@@ -5126,27 +5092,15 @@ async function saveToCloud(userId, data) {
   var sb = getSupabase();
   if(!sb || !userId) return;
   try {
-    var payload = {
-      user_id: userId,
-      portfolio_data: data,
-      updated_at: new Date().toISOString(),
-      first_name: data.fields && data.fields['s-first'] || '',
-      last_name:  data.fields && data.fields['s-last']  || '',
-      overall_pct: calcOverallPct()
-    };
-    // Tab completion breakdown
-    for(var i=1; i<=7; i++) payload['tab_'+i+'_pct'] = calcTabProgress(i);
-
-    await sb.from('transition_portfolios').upsert(payload, { onConflict: 'user_id' });
+    await sb.from('portfolios').upsert({
+      student_id: userId,
+      school_id: _currentUserProfile ? _currentUserProfile.school_id : null,
+      data: data,
+      last_saved_at: new Date().toISOString()
+    }, { onConflict: 'student_id' });
   } catch(e) {
     console.warn('Cloud save failed:', e.message);
   }
-}
-
-function calcOverallPct() {
-  var total = 0;
-  for(var i=1; i<=7; i++) total += calcTabProgress(i);
-  return Math.round(total / 7);
 }
 
 // ── CLOUD LOAD ───────────────────────────────
@@ -5154,101 +5108,59 @@ async function loadCloudData(userId) {
   var sb = getSupabase();
   if(!sb || !userId) return;
   try {
-    var res = await sb.from('transition_portfolios').select('portfolio_data').eq('user_id', userId).single();
-    if(res.data && res.data.portfolio_data) {
-      // Restore from cloud data (same format as localStorage)
-      var data = res.data.portfolio_data;
-      restoreFromData(data);
+    var res = await sb.from('portfolios')
+      .select('data')
+      .eq('student_id', userId)
+      .single();
+    if(res.data && res.data.data) {
+      restoreFromData(res.data.data);
       showSaveToast('✅ Portfolio loaded from your account');
     }
   } catch(e) {
     console.warn('Cloud load failed:', e.message);
-    // Fall back to localStorage
     restoreProgress();
   }
 }
 
-// Override saveProgress to also push to cloud
-var _origSaveProgress = null;
 var _cloudSyncInitialized = false;
 function initCloudSync() {
-  // Guard against re-wrapping on repeated SIGNED_IN events (token refresh).
-  // saveProgress() now handles cloud push internally via _currentUser check,
-  // so this function no longer needs to wrap anything.
   if(_cloudSyncInitialized) return;
   _cloudSyncInitialized = true;
 }
 
-function buildSaveData() {
-  var data = { fields:{}, pathways:{}, pathwayDetails:{}, discState:discState, careers:{}, personal:{}, samples:{}, resources:{}, generatedDocs:{}, discDetails:{}, theme:currentTheme, template:currentTemplate, savedAt:new Date().toISOString() };
-  ['s-first','s-last','s-phone','s-email','s-address','s-dob','s-grad','s-school','s-cm','s-region','s-gpa'].forEach(function(id){data.fields[id]=v(id);});
-  ['pw1','pw2','pw3','pw4','pw5','pw6','pw7','pw8'].forEach(function(id){var el=document.getElementById(id);data.pathways[id]=el?el.checked:false;});
-  ['pd-pw1-q','pd-pw2-q1','pd-pw2-q2','pd-pw3-q','pd-pw4-q1','pd-pw4-q2','pd-pw5-q','pd-pw6-q','pd-pw7-q','pd-pw8-q'].forEach(function(id){data.pathwayDetails[id]=v(id);});
-  ['c1-title','c1-cluster','c1-why','c2-title','c2-cluster','c2-why','c3-title','c3-cluster','c3-why'].forEach(function(id){data.careers[id]=v(id);});
-  ['q-strengths','q-environment','q-voice'].forEach(function(id){data.personal[id]=v(id);});
-  ['um1-title','um1-class','um1-skills','um2-title','um2-class','um2-thesis','um3-title','um3-class','um3-proud','um3-skills'].forEach(function(id){data.samples[id]=v(id);});
-  ['r-alta','r-jobcorps','r-ccc','r-losrios','r-dor','r-workability'].forEach(function(id){var el=document.getElementById(id);data.resources[id]=el?el.checked:false;});
-  data.resources['r-notes']=v('r-notes');
-  ['resume','cover','lor','plan'].forEach(function(id){if(generatedDocs[id])data.generatedDocs[id]=generatedDocs[id];});
-  Object.keys(DISC_DATA).forEach(function(cat){DISC_DATA[cat].forEach(function(item,i){var el=document.getElementById('di-'+cat+'-'+i+'-det');if(el&&el.value)data.discDetails[cat+'-'+i]=el.value;});});
-  if(studentPhoto) data.photo = studentPhoto;
-  return data;
-}
-
-function restoreFromData(data) {
-  try {
-    Object.keys(data.fields||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.fields[id]||'';});
-    Object.keys(data.pathways||{}).forEach(function(id){var el=document.getElementById(id);if(el){el.checked=data.pathways[id];if(data.pathways[id])onPathwayChange();}});
-    Object.keys(data.pathwayDetails||{}).forEach(function(id){var el=document.getElementById(id);if(el&&data.pathwayDetails[id])el.value=data.pathwayDetails[id];});
-    Object.keys(data.careers||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.careers[id]||'';});
-    Object.keys(data.personal||{}).forEach(function(id){var el=document.getElementById(id);if(el)el.value=data.personal[id]||'';});
-    if(data.discState){Object.keys(data.discState).forEach(function(cat){Object.keys(data.discState[cat]).forEach(function(i){discState[cat][i]=data.discState[cat][i];var cb=document.getElementById('di-'+cat+'-'+i);if(cb){cb.checked=data.discState[cat][i];var row=cb.closest('.discovery-item');if(row&&data.discState[cat][i])row.classList.add('checked');}});updateCount(cat);updateSummary(cat);});}
-    Object.keys(data.discDetails||{}).forEach(function(key){var el=document.getElementById('di-'+key+'-det');if(el)el.value=data.discDetails[key];});
-    Object.keys(data.samples||{}).forEach(function(id){var el=document.getElementById(id);if(el&&data.samples[id])el.value=data.samples[id];});
-    Object.keys(data.resources||{}).forEach(function(id){var el=document.getElementById(id);if(!el)return;if(el.type==='checkbox')el.checked=data.resources[id];else el.value=data.resources[id]||'';});
-    Object.keys(data.generatedDocs||{}).forEach(function(id){generatedDocs[id]=data.generatedDocs[id];var rd=document.getElementById('doc-result-'+id);if(rd)rd.innerHTML=data.generatedDocs[id];});
-    if(data.photo){studentPhoto=data.photo;var img=document.getElementById('photo-preview-img');if(img){img.src=studentPhoto;img.style.display='block';document.getElementById('photo-placeholder').style.display='none';var rw=document.getElementById('photo-remove-wrap');if(rw)rw.style.display='block';}}
-    if(data.theme)selectScheme(data.theme);
-    if(data.template)selectTemplate(data.template);
-    updateAllProgress();
-  } catch(e) { console.warn('Restore from data failed:', e); }
-}
-
 // ══════════════════════════════════════════════
-//  STUDENT-SIDE: CONNECT / DISCONNECT CASE MANAGER
+//  STUDENT: CASE MANAGER CONNECTION
 // ══════════════════════════════════════════════
 async function loadMyCaseManager() {
-  // Called after login when the student view mounts. Checks if an
-  // active assignment exists and updates the Connect card UI accordingly.
   if(!_currentUser) return;
   var sb = getSupabase();
   if(!sb) return;
   try {
-    var assignRes = await sb.from('caseload_assignments')
-      .select('id,staff_user_id,staff_role,assigned_at')
-      .eq('student_user_id', _currentUser.id)
-      .eq('status', 'active')
+    var assignRes = await sb.from('student_assignments')
+      .select('id, case_manager_id, assigned_at')
+      .eq('student_id', _currentUser.id)
+      .eq('active', true)
       .limit(1)
       .maybeSingle();
 
+    var empty  = document.getElementById('cm-connect-empty');
+    var active = document.getElementById('cm-connect-active');
+
     if(!assignRes.data) {
-      var empty = document.getElementById('cm-connect-empty');
-      var active = document.getElementById('cm-connect-active');
       if(empty) empty.style.display = 'block';
       if(active) active.style.display = 'none';
       return;
     }
 
-    // Active assignment — look up staff name via secure RPC
-    var roleRes = await sb.rpc('get_staff_display', { p_user_id: assignRes.data.staff_user_id });
-    var roleRow = (roleRes.data && roleRes.data.length > 0) ? roleRes.data[0] : null;
+    // Look up CM name from profiles
+    var cmRes = await sb.from('profiles')
+      .select('full_name, email')
+      .eq('id', assignRes.data.case_manager_id)
+      .single();
 
-    var name = (roleRow && (roleRow.full_name || roleRow.email)) || 'your case manager';
+    var name = (cmRes.data && (cmRes.data.full_name || cmRes.data.email)) || 'your case manager';
     var date = new Date(assignRes.data.assigned_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    var roleLabel = assignRes.data.staff_role === 'admin' ? 'Admin' : 'Case Manager';
 
-    var empty = document.getElementById('cm-connect-empty');
-    var active = document.getElementById('cm-connect-active');
     if(empty) empty.style.display = 'none';
     if(active) active.style.display = 'block';
     var nameEl = document.getElementById('cm-connect-name');
@@ -5256,200 +5168,770 @@ async function loadMyCaseManager() {
     var roleEl = document.getElementById('cm-connect-role-label');
     if(nameEl) nameEl.textContent = name;
     if(dateEl) dateEl.textContent = date;
-    if(roleEl) roleEl.textContent = roleLabel;
+    if(roleEl) roleEl.textContent = 'Case Manager';
   } catch(e) {
     console.warn('loadMyCaseManager failed:', e);
   }
 }
 
-async function connectCaseManager() {
-  var emailEl = document.getElementById('cm-connect-email');
-  var msgEl = document.getElementById('cm-connect-msg');
-  var email = (emailEl ? emailEl.value : '').trim().toLowerCase();
-  if(!msgEl) return;
-
-  if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-    msgEl.textContent = '⚠️ Please enter a valid email address.';
-    msgEl.style.color = 'var(--red)';
-    return;
-  }
-  if(!_currentUser) {
-    msgEl.textContent = '⚠️ Please sign in first.';
-    msgEl.style.color = 'var(--red)';
-    return;
-  }
-  if(email === _currentUser.email.toLowerCase()) {
-    msgEl.textContent = '⚠️ That\'s your own email. Enter your case manager\'s email.';
-    msgEl.style.color = 'var(--red)';
-    return;
-  }
-
-  msgEl.textContent = 'Looking up…';
-  msgEl.style.color = 'var(--slate)';
-
+// ══════════════════════════════════════════════
+//  CASE MANAGER DASHBOARD
+// ══════════════════════════════════════════════
+async function loadCMDashboard() {
   var sb = getSupabase();
-  if(!sb) return;
-
-  try {
-    // Look up staff via secure RPC function (bypasses student RLS restrictions
-    // but only returns user_id/role/name, never any other user data)
-    var staffRes = await sb.rpc('lookup_staff_by_email', { p_email: email });
-    var staffRow = (staffRes.data && staffRes.data.length > 0) ? staffRes.data[0] : null;
-
-    if(staffRes.error) {
-      console.warn('Staff lookup RPC failed:', staffRes.error);
-      msgEl.textContent = '⚠️ Lookup failed: ' + staffRes.error.message;
-      msgEl.style.color = 'var(--red)';
-      return;
-    }
-
-    if(!staffRow) {
-      msgEl.innerHTML = '⚠️ No case manager account found with that email. <br><span style="font-size:.75rem;color:var(--slate);">Your teacher needs to sign in to TransitionReady at least once before you can connect.</span>';
-      msgEl.style.color = 'var(--red)';
-      return;
-    }
-
-    // Create the assignment (RLS policy allows student to insert their own row)
-    var insertRes = await sb.from('caseload_assignments').insert({
-      staff_user_id:   staffRow.user_id,
-      student_user_id: _currentUser.id,
-      staff_role:      staffRow.role,
-      status:          'active',
-      consent_shown_at: new Date().toISOString()
-    });
-
-    if(insertRes.error) {
-      // Unique constraint violation = already connected (perhaps revoked)
-      if(insertRes.error.code === '23505') {
-        msgEl.textContent = '⚠️ You already have an assignment with this teacher. Try disconnecting first.';
-      } else {
-        msgEl.textContent = '⚠️ Could not connect: ' + insertRes.error.message;
-      }
-      msgEl.style.color = 'var(--red)';
-      return;
-    }
-
-    msgEl.textContent = '✓ Connected';
-    msgEl.style.color = 'var(--success)';
-    showSaveToast('✅ Connected to ' + (staffRes.data.full_name || email));
-    await loadMyCaseManager();
-  } catch(e) {
-    console.warn('connectCaseManager failed:', e);
-    msgEl.textContent = '⚠️ ' + e.message;
-    msgEl.style.color = 'var(--red)';
+  var dash = document.getElementById('cm-dashboard');
+  if(!dash) {
+    dash = document.createElement('div');
+    dash.id = 'cm-dashboard';
+    document.body.appendChild(dash);
   }
-}
 
-async function disconnectCaseManager() {
-  if(!confirm('Disconnect your case manager? They will no longer be able to see your portfolio. You can reconnect anytime.')) return;
-  if(!_currentUser) return;
-  var sb = getSupabase();
-  if(!sb) return;
+  dash.style.display = 'block';
+  dash.innerHTML = renderCMShell();
+
+  // Load assigned students
   try {
-    var res = await sb.from('caseload_assignments')
-      .update({ status: 'revoked', revoked_at: new Date().toISOString(), revoked_by: _currentUser.id })
-      .eq('student_user_id', _currentUser.id)
-      .eq('status', 'active');
+    var res = await sb.from('student_assignments')
+      .select('student_id, assigned_at, active')
+      .eq('case_manager_id', _currentUser.id)
+      .eq('active', true);
 
     if(res.error) throw res.error;
-    showSaveToast('✅ Case manager disconnected');
-    await loadMyCaseManager();
-  } catch(e) {
-    console.warn('disconnectCaseManager failed:', e);
-    showSaveToast('⚠️ Could not disconnect: ' + e.message);
-  }
-}
+    var assignments = res.data || [];
 
-// ── CASE MANAGER DASHBOARD ──────────────────
-async function loadCMDashboard() {
-  document.getElementById('cm-dashboard').style.display = 'block';
-  var sb = getSupabase();
-  if(!sb || !_currentUser) return;
-
-  // Update dashboard header to reflect actual role
-  var titleEl = document.querySelector('.cm-title');
-  if(titleEl) {
-    titleEl.textContent = _currentUserRole === 'admin'
-      ? 'TransitionReady — Admin Dashboard'
-      : 'TransitionReady — Case Manager';
-  }
-
-  try {
-    // RLS enforces this: only rows where auth.uid() = staff_user_id come back
-    var assignRes = await sb.from('caseload_assignments')
-      .select('student_user_id,assigned_at,staff_role')
-      .eq('staff_user_id', _currentUser.id)
-      .eq('status', 'active');
-
-    var studentIds = (assignRes.data || []).map(function(a) { return a.student_user_id; });
-
-    if(studentIds.length === 0) {
-      renderCMTable([]);
-      document.getElementById('cm-total').textContent    = '0';
-      document.getElementById('cm-active').textContent   = '0';
-      document.getElementById('cm-complete').textContent = '0';
-      document.getElementById('cm-avg').textContent      = '—';
+    if(assignments.length === 0) {
+      document.getElementById('cm-student-list').innerHTML =
+        '<div style="text-align:center;padding:3rem;color:#8a91a3;font-size:.95rem;">No students assigned yet.<br>Generate an invite link below to add a student.</div>';
       return;
     }
 
-    // RLS will filter to only assigned students (double-check defense in depth)
-    var portRes = await sb.from('transition_portfolios')
-      .select('user_id,first_name,last_name,overall_pct,tab_1_pct,tab_2_pct,tab_3_pct,tab_4_pct,tab_5_pct,tab_6_pct,tab_7_pct,updated_at')
-      .in('user_id', studentIds)
-      .order('updated_at', { ascending: false });
+    // Load profile for each student
+    var studentIds = assignments.map(function(a){ return a.student_id; });
+    var profileRes = await sb.from('profiles')
+      .select('id, full_name, email')
+      .in('id', studentIds);
 
-    var rows = portRes.data || [];
-    _cmRows = rows;
-    renderCMTable(rows);
+    var profileMap = {};
+    (profileRes.data || []).forEach(function(p){ profileMap[p.id] = p; });
 
-    // Stats (unchanged — but now scoped to actual caseload)
-    document.getElementById('cm-total').textContent = rows.length;
-    var week = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-    document.getElementById('cm-active').textContent = rows.filter(function(r){return r.updated_at > week;}).length;
-    document.getElementById('cm-complete').textContent = rows.filter(function(r){return (r.tab_7_pct||0) >= 50;}).length;
-    var avg = rows.length ? Math.round(rows.reduce(function(s,r){return s+(r.overall_pct||0);},0)/rows.length) : 0;
-    document.getElementById('cm-avg').textContent = avg + '%';
+    // Load portfolio completion for each student
+    var portRes = await sb.from('portfolios')
+      .select('student_id, data, last_saved_at')
+      .in('student_id', studentIds);
+
+    var portMap = {};
+    (portRes.data || []).forEach(function(p){ portMap[p.student_id] = p; });
+
+    // Load pending suggestions count
+    var sugRes = await sb.from('suggestions')
+      .select('portfolio_id, status')
+      .eq('suggested_by', _currentUser.id)
+      .eq('status', 'pending');
+
+    var pendingSugByPortfolio = {};
+    (sugRes.data || []).forEach(function(s){
+      pendingSugByPortfolio[s.portfolio_id] = (pendingSugByPortfolio[s.portfolio_id] || 0) + 1;
+    });
+
+    // Render student cards
+    var html = assignments.map(function(a) {
+      var profile  = profileMap[a.student_id] || {};
+      var port     = portMap[a.student_id];
+      var pct      = port ? calcPortfolioPct(port.data) : 0;
+      var lastSaved = port && port.last_saved_at
+        ? new Date(port.last_saved_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        : 'Not started';
+      var name = profile.full_name || profile.email || 'Unknown Student';
+      var initials = name.split(' ').map(function(n){return n[0]||'';}).join('').slice(0,2).toUpperCase();
+      var pctColor = pct >= 80 ? '#1a7f6e' : pct >= 40 ? '#BA7517' : '#8a91a3';
+
+      return '<div class="cm-student-card" onclick="viewStudentPortfolio(\''+a.student_id+'\')">'
+        + '<div class="cm-student-avatar">'+initials+'</div>'
+        + '<div class="cm-student-info">'
+        +   '<div class="cm-student-name">'+name+'</div>'
+        +   '<div class="cm-student-meta">Last active: '+lastSaved+'</div>'
+        + '</div>'
+        + '<div class="cm-student-right">'
+        +   '<div class="cm-pct" style="color:'+pctColor+'">'+pct+'%</div>'
+        +   '<div class="cm-pct-label">complete</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    document.getElementById('cm-student-list').innerHTML = html;
+    document.getElementById('cm-count').textContent = assignments.length + ' student' + (assignments.length !== 1 ? 's' : '');
+
   } catch(e) {
-    console.warn('CM dashboard load failed:', e.message);
-    var tbody = document.getElementById('cm-tbody');
-    if(tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px;">Failed to load caseload: '+escHtml(e.message)+'</td></tr>';
+    console.error('CM dashboard load failed:', e);
+    document.getElementById('cm-student-list').innerHTML =
+      '<div style="color:#c0392b;padding:1rem;">Failed to load students. Please refresh.</div>';
   }
 }
 
-var _cmRows = [];
-function cmFilter() {
-  var q = (document.getElementById('cm-search').value || '').toLowerCase();
-  renderCMTable(q ? _cmRows.filter(function(r){return (r.first_name+' '+r.last_name).toLowerCase().includes(q);}) : _cmRows);
+function calcPortfolioPct(data) {
+  if(!data) return 0;
+  // Count filled fields across the jsonb blob
+  var filled = 0;
+  var total = 0;
+  var fields = data.fields || {};
+  var keys = ['s-first','s-last','s-phone','s-email','s-school','s-cm','s-grad'];
+  keys.forEach(function(k){ total++; if(fields[k] && fields[k].trim()) filled++; });
+  var careers = data.careers || {};
+  ['c1-title','c2-title','c3-title'].forEach(function(k){ total++; if(careers[k] && careers[k].trim()) filled++; });
+  var docs = data.generatedDocs || {};
+  ['resume','cover','lor','plan'].forEach(function(k){ total++; if(docs[k]) filled++; });
+  return total > 0 ? Math.round((filled/total)*100) : 0;
 }
 
-function renderCMTable(rows) {
-  var tbody = document.getElementById('cm-tbody');
-  if(!tbody) return;
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--slate);padding:32px;">No students yet.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(function(r) {
-    var name = ((r.first_name||'') + ' ' + (r.last_name||'')).trim() || 'Unknown';
-    var pct = r.overall_pct || 0;
-    var pillClass = pct >= 80 ? 'done' : pct >= 40 ? 'mid' : 'low';
-    var bars = [1,2,3,4,5,6,7].map(function(i){
-      var tabPct = r['tab_'+i+'_pct'] || 0;
-      return '<div class="cm-tab-bar'+(tabPct>0?' filled':'')+'" style="height:'+(4+Math.round(tabPct/100*16))+'px;" title="Tab '+i+': '+tabPct+'%"></div>';
+function renderCMShell() {
+  return '<div style="min-height:100vh;background:#f6f8fb;font-family:\'DM Sans\',sans-serif;">'
+
+    // Header
+    + '<div style="background:#0f5447;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;">'
+    +   '<div style="font-family:\'DM Serif Display\',serif;font-size:1.4rem;color:#fff;letter-spacing:-.02em;">TransitionReady</div>'
+    +   '<div style="display:flex;align-items:center;gap:1rem;">'
+    +     '<span style="font-size:.85rem;color:rgba(255,255,255,.7);">Case Manager</span>'
+    +     '<button onclick="signOut()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.85rem;">Sign Out</button>'
+    +   '</div>'
+    + '</div>'
+
+    // Main content
+    + '<div style="max-width:900px;margin:0 auto;padding:2rem;">'
+
+    // Stats bar
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">'
+    +   '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +     '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="cm-count">—</div>'
+    +     '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Assigned students</div>'
+    +   '</div>'
+    +   '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +     '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="cm-completed-count">—</div>'
+    +     '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Portfolios ≥80% complete</div>'
+    +   '</div>'
+    +   '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +     '<div style="font-size:1.8rem;font-weight:600;color:#BA7517;" id="cm-pending-count">—</div>'
+    +     '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Suggestions pending approval</div>'
+    +   '</div>'
+    + '</div>'
+
+    // Invite generator
+    + '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
+    +   '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Invite a student</div>'
+    +   '<div style="display:flex;gap:.75rem;align-items:flex-start;">'
+    +     '<button onclick="generateStudentInvite()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;">Generate invite link</button>'
+    +     '<div id="invite-result" style="font-size:.85rem;color:#4a5368;padding:.7rem 0;word-break:break-all;"></div>'
+    +   '</div>'
+    + '</div>'
+
+    // Student list
+    + '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
+    +   '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">Your students</div>'
+    +   '<div id="cm-student-list" style="padding:.5rem;">'
+    +     '<div style="text-align:center;padding:3rem;color:#8a91a3;">Loading...</div>'
+    +   '</div>'
+    + '</div>'
+
+    + '</div></div>'
+
+    // Student portfolio modal
+    + '<div id="student-portfolio-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);overflow-y:auto;">'
+    +   '<div style="background:#fff;max-width:800px;margin:2rem auto;border-radius:16px;overflow:hidden;">'
+    +     '<div style="background:#0f5447;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">'
+    +       '<div style="font-size:1rem;font-weight:600;color:#fff;" id="modal-student-name">Student Portfolio</div>'
+    +       '<button onclick="closePortfolioModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1.1rem;">✕</button>'
+    +     '</div>'
+    +     '<div id="modal-portfolio-content" style="padding:1.5rem;"></div>'
+    +   '</div>'
+    + '</div>';
+}
+
+// ── INVITE GENERATOR ─────────────────────────
+async function generateStudentInvite() {
+  var sb = getSupabase();
+  var resultEl = document.getElementById('invite-result');
+  if(!resultEl) return;
+  resultEl.textContent = 'Generating...';
+
+  try {
+    var res = await sb.from('invites').insert({
+      role: 'student',
+      school_id: _currentUserProfile.school_id,
+      district_id: _currentUserProfile.district_id,
+      invited_by: _currentUser.id
+    }).select('token').single();
+
+    if(res.error) throw res.error;
+
+    var link = window.location.origin + '/signup.html?token=' + res.data.token;
+    resultEl.innerHTML = '<span style="color:#1a7f6e;font-weight:500;">✓ Link ready:</span> '
+      + '<a href="'+link+'" style="color:#1a7f6e;" target="_blank">'+link+'</a>'
+      + ' <button onclick="navigator.clipboard.writeText(\''+link+'\').then(function(){document.getElementById(\'invite-result\').querySelector(\'button\').textContent=\'Copied!\'})" '
+      + 'style="margin-left:8px;background:#e8f5f2;border:1px solid #1a7f6e;color:#0f5447;border-radius:6px;padding:3px 10px;font-size:.8rem;cursor:pointer;">Copy</button>';
+
+  } catch(e) {
+    resultEl.textContent = 'Failed to generate invite: ' + e.message;
+  }
+}
+
+// ── VIEW STUDENT PORTFOLIO ───────────────────
+async function viewStudentPortfolio(studentId) {
+  var sb = getSupabase();
+  var modal = document.getElementById('student-portfolio-modal');
+  var content = document.getElementById('modal-portfolio-content');
+  var nameEl = document.getElementById('modal-student-name');
+  if(!modal || !content) return;
+
+  modal.style.display = 'block';
+  content.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a91a3;">Loading portfolio...</div>';
+
+  try {
+    // Load profile
+    var profileRes = await sb.from('profiles').select('full_name, email').eq('id', studentId).single();
+    var name = profileRes.data ? (profileRes.data.full_name || profileRes.data.email) : 'Student';
+    if(nameEl) nameEl.textContent = name + '\'s Portfolio';
+
+    // Load portfolio
+    var portRes = await sb.from('portfolios').select('data, last_saved_at').eq('student_id', studentId).single();
+    var port = portRes.data;
+
+    if(!port || !port.data) {
+      content.innerHTML = '<div style="text-align:center;padding:2rem;color:#8a91a3;">This student hasn\'t started their portfolio yet.</div>';
+      return;
+    }
+
+    var d = port.data;
+    var fields = d.fields || {};
+    var careers = d.careers || {};
+    var docs = d.generatedDocs || {};
+    var lastSaved = port.last_saved_at
+      ? new Date(port.last_saved_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})
+      : 'Unknown';
+
+    content.innerHTML = renderPortfolioReadOnly(name, fields, careers, docs, lastSaved, studentId);
+
+    // Load existing suggestions
+    loadSuggestionsPanel(studentId);
+
+  } catch(e) {
+    content.innerHTML = '<div style="color:#c0392b;padding:1rem;">Failed to load portfolio: ' + e.message + '</div>';
+  }
+}
+
+function renderPortfolioReadOnly(name, fields, careers, docs, lastSaved, studentId) {
+  var section = function(title, body) {
+    return '<div style="margin-bottom:1.5rem;">'
+      + '<div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8a91a3;margin-bottom:.75rem;">'+title+'</div>'
+      + body
+      + '</div>';
+  };
+
+  var field = function(label, value, fieldKey) {
+    var val = value || '<span style="color:#d0d5e0;font-style:italic;">Not filled in</span>';
+    return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f0f2f6;gap:1rem;">'
+      + '<div style="font-size:.85rem;color:#4a5368;min-width:140px;">'+label+'</div>'
+      + '<div style="font-size:.9rem;color:#1a1f2e;flex:1;">'+val+'</div>'
+      + (fieldKey ? '<button onclick="openSuggestionForm(\''+studentId+'\',\'profile\',\''+fieldKey+'\')" style="background:#e8f5f2;border:1px solid #1a7f6e;color:#0f5447;border-radius:6px;padding:3px 10px;font-size:.78rem;cursor:pointer;white-space:nowrap;">Suggest edit</button>' : '')
+      + '</div>';
+  };
+
+  return '<div style="font-size:.8rem;color:#8a91a3;margin-bottom:1.5rem;">Last saved: '+lastSaved+'</div>'
+
+    + section('Profile', ''
+      + field('First name',  fields['s-first'], 's-first')
+      + field('Last name',   fields['s-last'],  's-last')
+      + field('Email',       fields['s-email'], 's-email')
+      + field('Phone',       fields['s-phone'], 's-phone')
+      + field('School',      fields['s-school'],'s-school')
+      + field('Grad year',   fields['s-grad'],  's-grad')
+      + field('GPA',         fields['s-gpa'],   's-gpa')
+    )
+
+    + section('Career goals', ''
+      + field('Career 1',    careers['c1-title'], 'c1-title')
+      + field('Career 2',    careers['c2-title'], 'c2-title')
+      + field('Career 3',    careers['c3-title'], 'c3-title')
+    )
+
+    + section('Generated documents', ''
+      + field('Resume',      docs['resume'] ? '✓ Generated' : null, null)
+      + field('Cover letter',docs['cover']  ? '✓ Generated' : null, null)
+      + field('LOR request', docs['lor']    ? '✓ Generated' : null, null)
+      + field('5-year plan', docs['plan']   ? '✓ Generated' : null, null)
+    )
+
+    + '<div id="suggestions-panel" style="margin-top:1.5rem;">'
+    +   '<div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8a91a3;margin-bottom:.75rem;">Your suggestions</div>'
+    +   '<div id="suggestions-list"><div style="color:#8a91a3;font-size:.85rem;">Loading suggestions...</div></div>'
+    + '</div>'
+
+    + '<div id="suggestion-form" style="display:none;margin-top:1.5rem;background:#f6f8fb;border-radius:10px;padding:1.25rem;">'
+    +   '<div style="font-size:.9rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Add suggestion</div>'
+    +   '<div style="font-size:.8rem;color:#4a5368;margin-bottom:.5rem;" id="suggestion-field-label">Field:</div>'
+    +   '<textarea id="suggestion-value" placeholder="Your suggested value..." style="width:100%;padding:.75rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;font-family:\'DM Sans\',sans-serif;resize:vertical;min-height:80px;outline:none;"></textarea>'
+    +   '<div style="display:flex;gap:.75rem;margin-top:.75rem;">'
+    +     '<button onclick="submitSuggestion(\''+studentId+'\')" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.65rem 1.25rem;font-size:.875rem;font-weight:600;cursor:pointer;">Submit suggestion</button>'
+    +     '<button onclick="document.getElementById(\'suggestion-form\').style.display=\'none\'" style="background:none;border:1.5px solid #d8dde8;border-radius:8px;padding:.65rem 1rem;font-size:.875rem;cursor:pointer;color:#4a5368;">Cancel</button>'
+    +   '</div>'
+    +   '<div id="suggestion-msg" style="font-size:.82rem;margin-top:.5rem;"></div>'
+    + '</div>';
+}
+
+var _activeSuggestionField = null;
+var _activeSuggestionTab   = null;
+
+function openSuggestionForm(studentId, tab, field) {
+  _activeSuggestionTab   = tab;
+  _activeSuggestionField = field;
+  var form  = document.getElementById('suggestion-form');
+  var label = document.getElementById('suggestion-field-label');
+  var val   = document.getElementById('suggestion-value');
+  var msg   = document.getElementById('suggestion-msg');
+  if(form)  form.style.display = 'block';
+  if(label) label.textContent = 'Suggesting edit for: ' + field;
+  if(val)   val.value = '';
+  if(msg)   msg.textContent = '';
+  if(val)   val.focus();
+}
+
+async function submitSuggestion(studentId) {
+  var sb  = getSupabase();
+  var val = document.getElementById('suggestion-value');
+  var msg = document.getElementById('suggestion-msg');
+  if(!val || !val.value.trim()) {
+    if(msg) { msg.textContent = 'Please enter a suggestion.'; msg.style.color = '#c0392b'; }
+    return;
+  }
+
+  try {
+    // Get portfolio id for this student
+    var portRes = await sb.from('portfolios').select('id').eq('student_id', studentId).single();
+    if(portRes.error || !portRes.data) throw new Error('Portfolio not found');
+
+    var res = await sb.from('suggestions').insert({
+      portfolio_id:    portRes.data.id,
+      suggested_by:    _currentUser.id,
+      tab:             _activeSuggestionTab,
+      field:           _activeSuggestionField,
+      suggested_value: val.value.trim(),
+      status:          'pending'
+    });
+
+    if(res.error) throw res.error;
+
+    if(msg) { msg.textContent = '✓ Suggestion submitted.'; msg.style.color = '#1a7f6e'; }
+    if(val) val.value = '';
+    document.getElementById('suggestion-form').style.display = 'none';
+    loadSuggestionsPanel(studentId);
+
+  } catch(e) {
+    if(msg) { msg.textContent = 'Failed: ' + e.message; msg.style.color = '#c0392b'; }
+  }
+}
+
+async function loadSuggestionsPanel(studentId) {
+  var sb   = getSupabase();
+  var list = document.getElementById('suggestions-list');
+  if(!list) return;
+
+  try {
+    var portRes = await sb.from('portfolios').select('id').eq('student_id', studentId).single();
+    if(!portRes.data) { list.innerHTML = '<div style="color:#8a91a3;font-size:.85rem;">No portfolio found.</div>'; return; }
+
+    var res = await sb.from('suggestions')
+      .select('id, tab, field, suggested_value, status, created_at')
+      .eq('portfolio_id', portRes.data.id)
+      .eq('suggested_by', _currentUser.id)
+      .order('created_at', { ascending: false });
+
+    var sug = res.data || [];
+    if(sug.length === 0) {
+      list.innerHTML = '<div style="color:#8a91a3;font-size:.85rem;">No suggestions yet.</div>';
+      return;
+    }
+
+    var statusColor = { pending: '#BA7517', approved: '#1a7f6e', rejected: '#c0392b' };
+    list.innerHTML = sug.map(function(s) {
+      return '<div style="padding:.75rem;border:1px solid #d8dde8;border-radius:8px;margin-bottom:.5rem;background:#fff;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">'
+        +   '<span style="font-size:.8rem;font-weight:600;color:#1a1f2e;">'+s.field+'</span>'
+        +   '<span style="font-size:.75rem;font-weight:600;color:'+statusColor[s.status]+';text-transform:uppercase;">'+s.status+'</span>'
+        + '</div>'
+        + '<div style="font-size:.85rem;color:#4a5368;">'+s.suggested_value+'</div>'
+        + '</div>';
     }).join('');
-    var updated = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
-    return '<tr>'
-      +'<td><strong>'+name+'</strong></td>'
-      +'<td style="color:var(--slate);font-size:.8rem;">'+r.user_id.slice(0,8)+'…</td>'
-      +'<td><span class="cm-progress-pill '+pillClass+'">'+pct+'%</span></td>'
-      +'<td style="text-align:center;"><div class="cm-tab-bars" style="justify-content:center;">'+bars+'</div></td>'
-      +'<td style="color:var(--slate);font-size:.82rem;">'+updated+'</td>'
-      +'</tr>';
-  }).join('');
+
+  } catch(e) {
+    list.innerHTML = '<div style="color:#c0392b;font-size:.85rem;">Failed to load suggestions.</div>';
+  }
+}
+
+function closePortfolioModal() {
+  var modal = document.getElementById('student-portfolio-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+// CM dashboard styles
+var cmStyles = document.createElement('style');
+cmStyles.textContent = `
+  .cm-student-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .875rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+    margin-bottom: 2px;
+  }
+  .cm-student-card:hover { background: #f6f8fb; }
+  .cm-student-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #e8f5f2;
+    color: #0f5447;
+    font-size: .85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .cm-student-info { flex: 1; }
+  .cm-student-name { font-size: .95rem; font-weight: 500; color: #1a1f2e; }
+  .cm-student-meta { font-size: .78rem; color: #8a91a3; margin-top: 2px; }
+  .cm-student-right { text-align: right; }
+  .cm-pct { font-size: 1.3rem; font-weight: 600; }
+  .cm-pct-label { font-size: .72rem; color: #8a91a3; }
+`;
+document.head.appendChild(cmStyles);
+
+// ══════════════════════════════════════════════
+//  DISTRICT ADMIN DASHBOARD
+// ══════════════════════════════════════════════
+async function loadDistrictAdminDashboard() {
+  var sb   = getSupabase();
+  var dash = document.getElementById('cm-dashboard');
+  if(!dash) {
+    dash = document.createElement('div');
+    dash.id = 'cm-dashboard';
+    document.body.appendChild(dash);
+  }
+
+  dash.style.display = 'block';
+  dash.innerHTML = '<div style="min-height:100vh;background:#f6f8fb;font-family:\'DM Sans\',sans-serif;">'
+
+    // Header
+    + '<div style="background:#0f5447;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;">'
+    +   '<div style="font-family:\'DM Serif Display\',serif;font-size:1.4rem;color:#fff;letter-spacing:-.02em;">TransitionReady</div>'
+    +   '<div style="display:flex;align-items:center;gap:1rem;">'
+    +     '<span style="font-size:.85rem;color:rgba(255,255,255,.7);">District Administrator</span>'
+    +     '<button onclick="signOut()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.85rem;">Sign Out</button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div style="max-width:960px;margin:0 auto;padding:2rem;">'
+    +   '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.6rem;color:#1a1f2e;margin-bottom:1.5rem;">District Overview</h2>'
+
+    // Stats
+    +   '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="da-student-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Total students</div>'
+    +     '</div>'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="da-completed-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Portfolios complete</div>'
+    +     '</div>'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="da-cm-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Case managers</div>'
+    +     '</div>'
+    +   '</div>'
+
+    // Invite CM
+    +   '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
+    +     '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Invite a case manager</div>'
+    +     '<button onclick="generateCMInvite()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;">Generate invite link</button>'
+    +     '<div id="da-invite-result" style="font-size:.85rem;color:#4a5368;margin-top:.75rem;word-break:break-all;"></div>'
+    +   '</div>'
+
+    // Students table
+    +   '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;margin-bottom:2rem;">'
+    +     '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">All students</div>'
+    +     '<div id="da-student-list" style="padding:.5rem;"><div style="text-align:center;padding:2rem;color:#8a91a3;">Loading...</div></div>'
+    +   '</div>'
+
+    // Deletion requests
+    +   '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
+    +     '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">Deletion requests</div>'
+    +     '<div id="da-deletion-list" style="padding:1rem;"><div style="color:#8a91a3;font-size:.85rem;">No pending deletion requests.</div></div>'
+    +   '</div>'
+
+    + '</div></div>';
+
+  // Load data
+  try {
+    var districtId = _currentUserProfile.district_id;
+
+    // Students in district
+    var studentRes = await sb.from('profiles')
+      .select('id, full_name, email, school_id, created_at')
+      .eq('district_id', districtId)
+      .eq('role', 'student');
+
+    var students = studentRes.data || [];
+    document.getElementById('da-student-count').textContent = students.length;
+
+    // Case managers in district
+    var cmRes = await sb.from('profiles')
+      .select('id')
+      .eq('district_id', districtId)
+      .eq('role', 'case_manager');
+    document.getElementById('da-cm-count').textContent = (cmRes.data || []).length;
+
+    // Portfolios
+    var studentIds = students.map(function(s){ return s.id; });
+    var portRes = studentIds.length > 0
+      ? await sb.from('portfolios').select('student_id, data, last_saved_at').in('student_id', studentIds)
+      : { data: [] };
+
+    var portMap = {};
+    (portRes.data || []).forEach(function(p){ portMap[p.student_id] = p; });
+
+    var completed = students.filter(function(s){
+      var port = portMap[s.id];
+      return port && calcPortfolioPct(port.data) >= 80;
+    }).length;
+    document.getElementById('da-completed-count').textContent = completed;
+
+    // Render student list
+    if(students.length === 0) {
+      document.getElementById('da-student-list').innerHTML =
+        '<div style="text-align:center;padding:2rem;color:#8a91a3;">No students in this district yet.</div>';
+    } else {
+      document.getElementById('da-student-list').innerHTML = students.map(function(s) {
+        var port = portMap[s.id];
+        var pct  = port ? calcPortfolioPct(port.data) : 0;
+        var pctColor = pct >= 80 ? '#1a7f6e' : pct >= 40 ? '#BA7517' : '#8a91a3';
+        var name = s.full_name || s.email || 'Unknown';
+        var initials = name.split(' ').map(function(n){return n[0]||'';}).join('').slice(0,2).toUpperCase();
+        return '<div style="display:flex;align-items:center;gap:1rem;padding:.875rem 1rem;border-bottom:1px solid #f0f2f6;">'
+          + '<div style="width:36px;height:36px;border-radius:50%;background:#e8f5f2;color:#0f5447;font-size:.8rem;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+initials+'</div>'
+          + '<div style="flex:1;">'
+          +   '<div style="font-size:.9rem;font-weight:500;color:#1a1f2e;">'+name+'</div>'
+          +   '<div style="font-size:.78rem;color:#8a91a3;">'+s.email+'</div>'
+          + '</div>'
+          + '<div style="font-size:1.1rem;font-weight:600;color:'+pctColor+';margin-right:.5rem;">'+pct+'%</div>'
+          + '<button onclick="requestDeleteProfile(\''+s.id+'\',\''+name+'\')" style="background:#fdf0ee;border:1px solid #f5c0b8;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;">Delete</button>'
+          + '</div>';
+      }).join('');
+    }
+
+  } catch(e) {
+    console.error('District admin dashboard failed:', e);
+  }
+}
+
+async function generateCMInvite() {
+  var sb = getSupabase();
+  var resultEl = document.getElementById('da-invite-result');
+  if(!resultEl) return;
+  resultEl.textContent = 'Generating...';
+
+  try {
+    var res = await sb.from('invites').insert({
+      role: 'case_manager',
+      school_id: _currentUserProfile.school_id,
+      district_id: _currentUserProfile.district_id,
+      invited_by: _currentUser.id
+    }).select('token').single();
+
+    if(res.error) throw res.error;
+
+    var link = window.location.origin + '/signup.html?token=' + res.data.token;
+    resultEl.innerHTML = '<span style="color:#1a7f6e;font-weight:500;">✓ Link ready:</span> '
+      + '<a href="'+link+'" style="color:#1a7f6e;" target="_blank">'+link+'</a>'
+      + ' <button onclick="navigator.clipboard.writeText(\''+link+'\')" '
+      + 'style="margin-left:8px;background:#e8f5f2;border:1px solid #1a7f6e;color:#0f5447;border-radius:6px;padding:3px 10px;font-size:.8rem;cursor:pointer;">Copy</button>';
+  } catch(e) {
+    resultEl.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function requestDeleteProfile(userId, name) {
+  if(!confirm('Delete all data for ' + name + '? This cannot be undone and will be logged in the audit trail.')) return;
+  var sb = getSupabase();
+  try {
+    // Delete portfolio first (cascades to suggestions)
+    await sb.from('portfolios').delete().eq('student_id', userId);
+    // Delete student assignments
+    await sb.from('student_assignments').delete().eq('student_id', userId);
+    // Delete profile (triggers audit log)
+    await sb.from('profiles').delete().eq('id', userId);
+    alert('Profile deleted successfully.');
+    loadDistrictAdminDashboard();
+  } catch(e) {
+    alert('Failed to delete profile: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  DIRECTOR DASHBOARD
+// ══════════════════════════════════════════════
+async function loadDirectorDashboard() {
+  var sb   = getSupabase();
+  var dash = document.getElementById('cm-dashboard');
+  if(!dash) {
+    dash = document.createElement('div');
+    dash.id = 'cm-dashboard';
+    document.body.appendChild(dash);
+  }
+
+  dash.style.display = 'block';
+  dash.innerHTML = '<div style="min-height:100vh;background:#f6f8fb;font-family:\'DM Sans\',sans-serif;">'
+
+    // Header
+    + '<div style="background:#0f5447;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;">'
+    +   '<div style="font-family:\'DM Serif Display\',serif;font-size:1.4rem;color:#fff;letter-spacing:-.02em;">TransitionReady</div>'
+    +   '<div style="display:flex;align-items:center;gap:1rem;">'
+    +     '<span style="font-size:.85rem;color:rgba(255,255,255,.7);">Sure Step Director</span>'
+    +     '<button onclick="signOut()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.85rem;">Sign Out</button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div style="max-width:960px;margin:0 auto;padding:2rem;">'
+    +   '<h2 style="font-family:\'DM Serif Display\',serif;font-size:1.6rem;color:#1a1f2e;margin-bottom:1.5rem;">Platform Overview</h2>'
+
+    // Stats
+    +   '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-district-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Active districts</div>'
+    +     '</div>'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-student-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Total students</div>'
+    +     '</div>'
+    +     '<div style="background:#fff;border-radius:12px;padding:1.25rem;border:1px solid #d8dde8;">'
+    +       '<div style="font-size:1.8rem;font-weight:600;color:#0f5447;" id="dir-completed-count">—</div>'
+    +       '<div style="font-size:.8rem;color:#8a91a3;margin-top:2px;">Portfolios complete</div>'
+    +     '</div>'
+    +   '</div>'
+
+    // Provision new district
+    +   '<div style="background:#fff;border-radius:12px;padding:1.5rem;border:1px solid #d8dde8;margin-bottom:2rem;">'
+    +     '<div style="font-size:1rem;font-weight:600;color:#1a1f2e;margin-bottom:.75rem;">Provision new district</div>'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:end;">'
+    +       '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">District name</label>'
+    +         '<input id="new-district-name" placeholder="e.g. Elk Grove Unified" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>'
+    +       '<div><label style="font-size:.8rem;font-weight:600;color:#1a1f2e;display:block;margin-bottom:.3rem;">Slug (URL-safe)</label>'
+    +         '<input id="new-district-slug" placeholder="e.g. elk-grove-unified" style="width:100%;padding:.7rem .9rem;border:1.5px solid #d8dde8;border-radius:8px;font-size:.9rem;outline:none;font-family:\'DM Sans\',sans-serif;"></div>'
+    +       '<button onclick="provisionDistrict()" style="background:#1a7f6e;color:#fff;border:none;border-radius:8px;padding:.7rem 1.25rem;font-size:.9rem;font-weight:600;cursor:pointer;white-space:nowrap;">Provision</button>'
+    +     '</div>'
+    +     '<div id="dir-provision-msg" style="font-size:.82rem;margin-top:.75rem;"></div>'
+    +   '</div>'
+
+    // Districts table
+    +   '<div style="background:#fff;border-radius:12px;border:1px solid #d8dde8;overflow:hidden;">'
+    +     '<div style="padding:1.25rem 1.5rem;border-bottom:1px solid #d8dde8;font-size:1rem;font-weight:600;color:#1a1f2e;">Active districts</div>'
+    +     '<div id="dir-district-list" style="padding:.5rem;"><div style="text-align:center;padding:2rem;color:#8a91a3;">Loading...</div></div>'
+    +   '</div>'
+
+    + '</div></div>';
+
+  // Load data
+  try {
+    var distRes  = await sb.from('districts').select('id, name, slug, active, contracted_at').eq('active', true);
+    var districts = distRes.data || [];
+    document.getElementById('dir-district-count').textContent = districts.length;
+
+    var studentRes = await sb.from('profiles').select('id').eq('role', 'student');
+    document.getElementById('dir-student-count').textContent = (studentRes.data || []).length;
+
+    var portRes = await sb.from('portfolios').select('data');
+    var completed = (portRes.data || []).filter(function(p){ return calcPortfolioPct(p.data) >= 80; }).length;
+    document.getElementById('dir-completed-count').textContent = completed;
+
+    if(districts.length === 0) {
+      document.getElementById('dir-district-list').innerHTML =
+        '<div style="text-align:center;padding:2rem;color:#8a91a3;">No districts provisioned yet.</div>';
+    } else {
+      document.getElementById('dir-district-list').innerHTML = districts.map(function(d) {
+        var contracted = d.contracted_at
+          ? new Date(d.contracted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+          : 'Unknown';
+        return '<div style="display:flex;align-items:center;gap:1rem;padding:1rem 1.5rem;border-bottom:1px solid #f0f2f6;">'
+          + '<div style="flex:1;">'
+          +   '<div style="font-size:.95rem;font-weight:500;color:#1a1f2e;">'+d.name+'</div>'
+          +   '<div style="font-size:.78rem;color:#8a91a3;">'+d.slug+' · Contracted: '+contracted+'</div>'
+          + '</div>'
+          + '<span style="font-size:.75rem;font-weight:600;color:#1a7f6e;background:#e8f5f2;padding:3px 10px;border-radius:12px;">Active</span>'
+          + '<button onclick="deactivateDistrict(\''+d.id+'\',\''+d.name+'\')" style="background:#fdf0ee;border:1px solid #f5c0b8;color:#c0392b;border-radius:6px;padding:4px 10px;font-size:.78rem;cursor:pointer;">Deactivate</button>'
+          + '</div>';
+      }).join('');
+    }
+
+  } catch(e) {
+    console.error('Director dashboard failed:', e);
+  }
+}
+
+async function provisionDistrict() {
+  var sb   = getSupabase();
+  var name = document.getElementById('new-district-name').value.trim();
+  var slug = document.getElementById('new-district-slug').value.trim().toLowerCase().replace(/\s+/g,'-');
+  var msg  = document.getElementById('dir-provision-msg');
+
+  if(!name || !slug) {
+    if(msg) { msg.textContent = 'Please enter both a name and slug.'; msg.style.color = '#c0392b'; }
+    return;
+  }
+
+  try {
+    var res = await sb.from('districts').insert({
+      name: name,
+      slug: slug,
+      active: true,
+      contracted_at: new Date().toISOString(),
+      contracted_by: _currentUser.id
+    }).select('id').single();
+
+    if(res.error) throw res.error;
+
+    // Also create a default school for the district
+    await sb.from('schools').insert({
+      district_id: res.data.id,
+      name: name + ' (Main)',
+      active: true
+    });
+
+    if(msg) { msg.textContent = '✓ District provisioned successfully.'; msg.style.color = '#1a7f6e'; }
+    document.getElementById('new-district-name').value = '';
+    document.getElementById('new-district-slug').value = '';
+
+    // Refresh
+    setTimeout(loadDirectorDashboard, 1000);
+
+  } catch(e) {
+    if(msg) { msg.textContent = 'Failed: ' + e.message; msg.style.color = '#c0392b'; }
+  }
+}
+
+async function deactivateDistrict(districtId, name) {
+  if(!confirm('Deactivate ' + name + '? This will prevent logins for all users in this district.')) return;
+  var sb = getSupabase();
+  try {
+    await sb.from('districts').update({ active: false }).eq('id', districtId);
+    loadDirectorDashboard();
+  } catch(e) {
+    alert('Failed: ' + e.message);
+  }
 }
 
 // ── BOOT AUTH ────────────────────────────────
 function bootAuth() {
   var sb = getSupabase();
   if(!sb) {
-    // Supabase not loaded yet — show app without auth (fallback)
     document.querySelector('.app-header').style.display = '';
     document.querySelector('.progress-wrap').style.display = '';
     document.querySelector('main').style.display = '';
@@ -5457,19 +5939,19 @@ function bootAuth() {
   }
 
   // Hide app until auth resolves
-  var appHeader = document.querySelector('.app-header');
+  var appHeader    = document.querySelector('.app-header');
   var progressWrap = document.querySelector('.progress-wrap');
-  var mainEl = document.querySelector('main');
-  if(appHeader) appHeader.style.display = 'none';
+  var mainEl       = document.querySelector('main');
+  if(appHeader)    appHeader.style.display    = 'none';
   if(progressWrap) progressWrap.style.display = 'none';
-  if(mainEl) mainEl.style.display = 'none';
+  if(mainEl)       mainEl.style.display       = 'none';
 
   // Check current session
   sb.auth.getSession().then(function(res) {
     handleSession(res.data.session);
   });
 
-  // Listen for auth changes (e.g. after OAuth redirect)
+  // Listen for auth state changes
   sb.auth.onAuthStateChange(function(event, session) {
     handleSession(session);
     if(event === 'SIGNED_IN') {
@@ -5477,7 +5959,6 @@ function bootAuth() {
     }
   });
 }
-
 (function init() {
   buildDiscovery();
   loadApiKey();
