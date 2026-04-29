@@ -257,12 +257,14 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
   // ==========================================================================
-  // Config — replace with your actual anon key
+  // Config
   // ==========================================================================
   const SUPABASE_URL  = 'https://tmnswnvvmlnkblmqgzck.supabase.co';
   const SUPABASE_ANON = 'sb_publishable_k1pbUhug9wVfaeHkPKMgqw_4EjSjDN9';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
   // ==========================================================================
   // Init
@@ -300,19 +302,12 @@
     setLoading('student', true);
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON,
-        },
-        body: JSON.stringify({
-          email,
-          options: { emailRedirectTo: `${window.location.origin}/login/confirm.html` }
-        }),
+      await sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/confirm.html` }
       });
 
-      // Supabase returns 200 even for unknown emails (security best practice)
+      // Supabase returns success even for unknown emails (security best practice)
       document.getElementById('magic-message').textContent =
         `If ${email} has an account, you'll receive a sign-in link shortly.`;
       showState('magic');
@@ -344,26 +339,16 @@
     setLoading('staff', true);
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON,
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
+      if (error || !data.session) {
         showAlert('staff', 'Incorrect email or password. Please try again.', 'error');
         setLoading('staff', false);
         return;
       }
 
-      // Store session and redirect to app
-      sessionStorage.setItem('tr_session', JSON.stringify(data));
-      window.location.href = '/app.html';
+      // Session is stored automatically by Supabase SDK — redirect to app
+      window.location.href = '/';
 
     } catch (err) {
       console.error('Staff login error:', err);
